@@ -1,9 +1,35 @@
 // Calling third-party packages
+const swaggerUI = require("swagger-ui-express");
+const swaggerJsDoc = require("swagger-jsdoc");
 const cors = require("cors");
 const hpp = require("hpp");
 const xss = require("xss-clean");
 const helmet = require("helmet");
 const express = require("express");
+
+const options = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "BY-LGCS-BE",
+      version: "1.0.0",
+      description:
+        "A data capturing API for Bayelsa State Local Government Civil Service Commission",
+    },
+    servers: [
+      {
+        url: "http://localhost:8000",
+      },
+      {
+        url: "https://by-lgcs-be.onrender.com",
+      },
+    ],
+  },
+  apis: ["./routes/*.js"],
+};
+
+const specs = swaggerJsDoc(options);
+
 const app = express();
 require("dotenv").config();
 
@@ -40,6 +66,8 @@ app.use(xss());
 app.use(hpp());
 
 // Mount routes
+app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
+
 app.use("/api/v1/users", users);
 app.use("/api/v1/auth", auth);
 app.use("/api/v1/civil-servants", servants);

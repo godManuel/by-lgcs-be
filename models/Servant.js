@@ -21,6 +21,7 @@ const servantSchema = new mongoose.Schema(
     sex: {
       type: String,
       enum: ["male", "female"],
+      required: true,
     },
     dateOfBirth: {
       type: Date,

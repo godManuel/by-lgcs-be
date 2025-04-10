@@ -148,3 +148,56 @@ exports.getCivilServant = asyncHandler(async (req, res, next) => {
     }
   }
 });
+
+// @DESC        Update Civil Servant
+// @ROUTE       POST  /api/v1/civil-servants/:id
+// @ACCESS      Private
+exports.updateCivilServant = asyncHandler(async (req, res, next) => {
+  const { serviceArea } = req.body;
+  const { role, assignedRDAs, assignedLGAs } = req.user;
+
+  if (role === "superadmin") {
+    let servant = await Servant.findById(req.params.servantId);
+    if (!servant) return next(new ErrorResponse("Data not found!", 404));
+
+    servant = await Servant.findByIdAndUpdate(
+      req.params.servantId,
+      {
+        $set: req.body,
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: { servant },
+    });
+  }
+
+  if (role === "admin") {
+    if (
+      assignedLGAs.includes(serviceArea) ||
+      assignedRDAs.includes(serviceArea)
+    ) {
+      const servant = await Servant.findById(req.params.servantId);
+      if (!servant) return next(new ErrorResponse("Data not found!", 404));
+
+      servant = await Servant.findByIdAndUpdate(
+        req.params.servantId,
+        {
+          $set: req.body,
+        },
+        { new: true, runValidators: true }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: { servant },
+      });
+    } else {
+      return next(
+        new ErrorResponse("You are not assigned to this region", 403)
+      );
+    }
+  }
+});

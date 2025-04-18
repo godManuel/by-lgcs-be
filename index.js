@@ -37,6 +37,7 @@ require("dotenv").config();
 const users = require("./routes/users");
 const auth = require("./routes/auth");
 const servants = require("./routes/servants");
+const serviceAreas = require("./routes/serviceAreas");
 
 // Calling built-in packages
 const errorHandler = require("./middlewares/error");
@@ -71,6 +72,7 @@ app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
 app.use("/api/v1/users", users);
 app.use("/api/v1/auth", auth);
 app.use("/api/v1/civil-servants", servants);
+app.use("/api/v1/service-areas", serviceAreas);
 
 // Mount Built-in middlewares
 app.use(notFound);

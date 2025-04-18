@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const validator = require("validator");
+const serviceAreas = require("../config/serviceAreas");
 
 const userSchema = new mongoose.Schema({
   firstName: String,
@@ -30,7 +31,7 @@ const userSchema = new mongoose.Schema({
   },
   assignedRDAs: {
     type: [String],
-    enum: ["agrogbene", "peremabiri"],
+    enum: serviceAreas.RDAs,
     // validate: {
     //   validator: function (v) {
     //     if (this.assignedLGAs.length === 0) {
@@ -43,16 +44,7 @@ const userSchema = new mongoose.Schema({
   },
   assignedLGAs: {
     type: [String],
-    enum: [
-      "yenagoa",
-      "ogbia",
-      "southern-ijaw",
-      "nembe",
-      "ekeremor",
-      "kolokuma/opokuma",
-      "brass",
-      "sagbama",
-    ],
+    enum: serviceAreas.LGAs,
     // validate: {
     //   validator: function (v) {
     //     if (this.assignedRDAs.length === 0) {

@@ -1,4 +1,7 @@
 const mongoose = require("mongoose");
+const serviceAreas = require("../config/serviceAreas");
+
+const validServiceAreas = [...serviceAreas.RDAs, ...serviceAreas.LGAs];
 
 const servantSchema = new mongoose.Schema(
   {
@@ -7,7 +10,11 @@ const servantSchema = new mongoose.Schema(
       enum: ["rda", "lga"],
       required: true,
     },
-    serviceArea: { type: String, required: true },
+    serviceArea: {
+      type: String,
+      enum: { values: validServiceAreas, message: "Invalid Service Area" },
+      required: true,
+    },
     displayPhoto: { type: String, required: true },
     firstName: {
       type: String,
@@ -105,6 +112,24 @@ servantSchema.pre("save", async function (next) {
       .toString()
       .padStart(3, "0")}`;
   }
+  next();
+});
+
+servantSchema.pre("validate", function (next) {
+  const { serviceArea, serviceRegion } = this;
+
+  const isValid =
+    serviceRegion === "rda"
+      ? serviceAreas.RDAs.includes(serviceArea)
+      : serviceAreas.LGAs.includes(serviceArea);
+
+  if (!isValid) {
+    this.invalidate(
+      "serviceArea",
+      `Service area does not match selected region (${serviceRegion}).`
+    );
+  }
+
   next();
 });
 

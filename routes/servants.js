@@ -8,6 +8,7 @@ const {
   getCivilServant,
   getCivilServants,
   updateCivilServant,
+  uploadCerts,
 } = require("../controllers/servants");
 
 const { protect, authorize } = require("../middlewares/auth");
@@ -203,5 +204,14 @@ router
 router
   .route("/:servantId")
   .put(protect, authorize("superadmin", "admin"), updateCivilServant);
+
+router
+  .route("/:servantId/certificates")
+  .put(
+    protect,
+    authorize("superadmin", "admin"),
+    upload.array("certificates"),
+    uploadCerts
+  );
 
 module.exports = router;

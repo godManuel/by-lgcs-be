@@ -14,13 +14,6 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
   const { path } = req.file;
   const newPath = await uploader(path);
   fs.unlinkSync(path);
-  // const urls = [];
-  // const files = req.files;
-  // for (const file of files) {
-
-  // }
-
-  console.log(newPath);
 
   const { serviceArea } = req.body;
   const { role, assignedRDAs, assignedLGAs } = req.user;
@@ -186,6 +179,73 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
         req.params.servantId,
         {
           $set: req.body,
+        },
+        { new: true, runValidators: true }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: { servant },
+      });
+    } else {
+      return next(
+        new ErrorResponse("You are not assigned to this region", 403)
+      );
+    }
+  }
+});
+
+// @DESC        Upload Certificates for Civil Servant
+// @ROUTE       POST  /api/v1/civil-servants/:id/certificates
+// @ACCESS      Private
+exports.uploadCerts = asyncHandler(async (req, res, next) => {
+  const { serviceArea } = req.body;
+  const { role, assignedRDAs, assignedLGAs } = req.user;
+
+  if (role === "superadmin") {
+    let servant = await Servant.findById(req.params.servantId);
+    if (!servant) return next(new ErrorResponse("Data not found!", 404));
+
+    const certificates = req.files.map((file, index) => ({
+      name: req.body[`certName${index}`] || file.originalname,
+      url: file.path,
+    }));
+
+    servant.certificates.unshift(certificates);
+
+    // servant = await Servant.findByIdAndUpdate(
+    //   req.params.servantId,
+    //   {
+    //     $set: {
+    //       certificates: [certificates],
+    //     },
+    //   },
+    //   { new: true, runValidators: true }
+    // );
+
+    res.status(200).json({
+      success: true,
+      data: { servant },
+    });
+  }
+
+  if (role === "admin") {
+    if (
+      assignedLGAs.includes(serviceArea) ||
+      assignedRDAs.includes(serviceArea)
+    ) {
+      const servant = await Servant.findById(req.params.servantId);
+      if (!servant) return next(new ErrorResponse("Data not found!", 404));
+
+      const certificates = req.files.map((file, index) => ({
+        name: req.body[`certName${index}`] || file.originalname,
+        url: file.path,
+      }));
+
+      servant = await Servant.findByIdAndUpdate(
+        req.params.servantId,
+        {
+          $set: certificates,
         },
         { new: true, runValidators: true }
       );

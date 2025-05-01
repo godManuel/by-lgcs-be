@@ -77,6 +77,12 @@ const servantSchema = new mongoose.Schema(
       required: true,
     },
     applicantID: String,
+    certificates: [
+      {
+        name: String,
+        url: String,
+      },
+    ],
   },
   { timestamps: true }
 );

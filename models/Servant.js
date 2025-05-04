@@ -1,18 +1,20 @@
 const mongoose = require("mongoose");
-const serviceAreas = require("../config/serviceAreas");
 
-const validServiceAreas = [...serviceAreas.RDAs, ...serviceAreas.LGAs];
+const certificateSchema = new mongoose.Schema({
+  name: String,
+  url: String,
+});
 
 const servantSchema = new mongoose.Schema(
   {
     serviceRegion: {
       type: String,
-      enum: ["rda", "lga"],
+      enum: ["RDA", "LGA"],
       required: true,
     },
     serviceArea: {
       type: String,
-      enum: { values: validServiceAreas, message: "Invalid Service Area" },
+      // enum: { values: validServiceAreas, message: "Invalid Service Area" },
       required: true,
     },
     displayPhoto: { type: String, required: true },
@@ -77,12 +79,35 @@ const servantSchema = new mongoose.Schema(
       required: true,
     },
     applicantID: String,
-    certificates: [
-      {
-        name: String,
-        url: String,
-      },
-    ],
+    hasFSLC: {
+      type: Boolean,
+      default: false,
+    },
+    hasSSCE: {
+      type: Boolean,
+      default: false,
+    },
+    hasFirstDegree: {
+      type: Boolean,
+      default: false,
+    },
+    hasAgeDeclarationORBirthCert: {
+      type: Boolean,
+      default: false,
+    },
+    hasLGACert: {
+      type: Boolean,
+      default: false,
+    },
+    hasChangeofName: {
+      type: Boolean,
+      default: false,
+    },
+    hasAnyOtherCert: {
+      type: Boolean,
+      default: false,
+    },
+    certificates: [certificateSchema],
   },
   { timestamps: true }
 );
@@ -121,23 +146,23 @@ servantSchema.pre("save", async function (next) {
   next();
 });
 
-servantSchema.pre("validate", function (next) {
-  const { serviceArea, serviceRegion } = this;
+// servantSchema.pre("validate", function (next) {
+//   const { serviceArea, serviceRegion } = this;
 
-  const isValid =
-    serviceRegion === "rda"
-      ? serviceAreas.RDAs.includes(serviceArea)
-      : serviceAreas.LGAs.includes(serviceArea);
+//   const isValid =
+//     serviceRegion === "rda"
+//       ? serviceAreas.RDAs.includes(serviceArea)
+//       : serviceAreas.LGAs.includes(serviceArea);
 
-  if (!isValid) {
-    this.invalidate(
-      "serviceArea",
-      `Service area does not match selected region (${serviceRegion}).`
-    );
-  }
+//   if (!isValid) {
+//     this.invalidate(
+//       "serviceArea",
+//       `Service area does not match selected region (${serviceRegion}).`
+//     );
+//   }
 
-  next();
-});
+//   next();
+// });
 
 const Servant = mongoose.model("Servant", servantSchema);
 

@@ -1,36 +1,78 @@
 const advancedResults = (model, populate) => async (req, res, next) => {
-  let query;
-
-  //   Destructure req.query and store in reqQuery
   const reqQuery = { ...req.query };
-
-  //   Fields to remove from reqQuery
   const removeFields = ["select", "sort", "limit", "page"];
-
-  //   Removing fields from reqQuery
   removeFields.forEach((param) => delete reqQuery[param]);
 
-  let queryStr = JSON.stringify(req.query);
+  let query;
+  let useAggregate = false;
+  let aggregatePipeline = [];
 
-  queryStr = queryStr.replace(
-    /\b(gt|gte|lt|lte|in)\b/g,
-    (match) => `$${match}`
-  );
+  // Case-insensitive search on serviceArea
+  if (req.query.serviceArea) {
+    const serviceArea = req.query.serviceArea;
+    reqQuery["serviceArea"] = { $regex: serviceArea, $options: "i" };
+  }
 
-  query = model.find(JSON.parse(queryStr));
+  // Handle name search with aggregation
+  if (req.query.name) {
+    useAggregate = true;
+    const name = req.query.name.replace(/-/g, " "); // replace hyphens with spaces
+    aggregatePipeline.push({
+      $match: {
+        $expr: {
+          $regexMatch: {
+            input: { $concat: ["$firstName", " ", "$lastName"] },
+            regex: name,
+            options: "i",
+          },
+        },
+      },
+    });
+  } else {
+    // Regular query string filtering
+    let queryStr = JSON.stringify(reqQuery);
+    queryStr = queryStr.replace(
+      /\b(gt|gte|lt|lte|in)\b/g,
+      (match) => `$${match}`
+    );
+    query = model.find(JSON.parse(queryStr));
+  }
 
-  //   Select fields
+  // Select fields
   if (req.query.select) {
     const fields = req.query.select.split(",").join(" ");
-    query = query.select(fields);
+    if (useAggregate) {
+      aggregatePipeline.push({
+        $project: fields.split(" ").reduce((acc, field) => {
+          acc[field] = 1;
+          return acc;
+        }, {}),
+      });
+    } else {
+      query = query.select(fields);
+    }
   }
 
   // Sort
   if (req.query.sort) {
     const sortBy = req.query.sort.split(",").join(" ");
-    query = query.sort(sortBy);
+    if (useAggregate) {
+      aggregatePipeline.push({
+        $sort: sortBy.split(" ").reduce((acc, field) => {
+          const direction = field.startsWith("-") ? -1 : 1;
+          acc[field.replace("-", "")] = direction;
+          return acc;
+        }, {}),
+      });
+    } else {
+      query = query.sort(sortBy);
+    }
   } else {
-    query = query.sort("-createdAt");
+    if (useAggregate) {
+      aggregatePipeline.push({ $sort: { createdAt: -1 } });
+    } else {
+      query = query.sort("-createdAt");
+    }
   }
 
   // Pagination
@@ -38,41 +80,41 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   const limit = parseInt(req.query.limit, 10) || 100;
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
-  const total = await model.countDocuments();
 
-  query = query.skip(startIndex).limit(limit);
+  if (useAggregate) {
+    const total = await model.countDocuments();
+    aggregatePipeline.push({ $skip: startIndex }, { $limit: limit });
 
-  //   Populate
-  if (populate) {
-    query = query.populate(populate);
-  }
+    const results = await model.aggregate(aggregatePipeline);
 
-  const results = await query;
-  if (!results) return next(new ErrorResponse("No posts found!", 404));
+    const pagination = {};
+    if (endIndex < total) pagination.next = { page: page + 1, limit };
+    if (startIndex > 0) pagination.prev = { page: page - 1, limit };
 
-  // Pagination controls
-  const pagination = {};
+    res.advancedResults = {
+      success: true,
+      nbHits: results.length,
+      pagination,
+      data: results,
+    };
+  } else {
+    const total = await model.countDocuments();
+    query = query.skip(startIndex).limit(limit);
+    if (populate) query = query.populate(populate);
 
-  if (endIndex < total) {
-    pagination.next = {
-      page: page + 1,
-      limit,
+    const results = await query;
+
+    const pagination = {};
+    if (endIndex < total) pagination.next = { page: page + 1, limit };
+    if (startIndex > 0) pagination.prev = { page: page - 1, limit };
+
+    res.advancedResults = {
+      success: true,
+      nbHits: results.length,
+      pagination,
+      data: results,
     };
   }
-
-  if (startIndex > 0) {
-    pagination.prev = {
-      page: page - 1,
-      limit,
-    };
-  }
-
-  res.advancedResults = {
-    success: true,
-    nbHits: results.length,
-    pagination,
-    data: results,
-  };
 
   next();
 };

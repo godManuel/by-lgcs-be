@@ -1,3 +1,4 @@
+const { normalizeServiceArea } = require("../utils/normalizeServiceArea.js");
 const Servant = require("../models/Servant.js");
 const asyncHandler = require("../middlewares/async.js");
 const ErrorResponse = require("../utils/errorResponse.js");
@@ -15,13 +16,20 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
   const newPath = await uploader(path);
   fs.unlinkSync(path);
 
-  const { serviceArea } = req.body;
+  const { serviceArea, serviceRegion } = req.body;
   const { role, assignedRDAs, assignedLGAs } = req.user;
+
+  // console.log(req.body);
+
+  const normalized = normalizeServiceArea(serviceRegion, serviceArea);
+
+  if (!normalized)
+    return res.status(400).json({ error: "Invalid serviceArea provided" });
 
   if (role === "superadmin") {
     const servant = await Servant.create({
       serviceRegion: req.body.serviceRegion,
-      serviceArea: req.body.serviceArea,
+      serviceArea: normalized.value,
       displayPhoto: newPath.url,
       firstName: req.body.firstName,
       lastName: req.body.lastName,
@@ -50,8 +58,8 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
       assignedRDAs.includes(serviceArea)
     ) {
       const servant = await Servant.create({
-        serviceRegion: req.body.serviceRegion,
-        serviceArea: req.body.serviceArea,
+        serviceRegion: normalized.type,
+        serviceArea: normalized.value,
         displayPhoto: newPath.url,
         firstName: req.body.firstName,
         lastName: req.body.lastName,
@@ -206,13 +214,40 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
     let servant = await Servant.findById(req.params.servantId);
     if (!servant) return next(new ErrorResponse("Data not found!", 404));
 
-    const certificates = req.files.map((file, index) => ({
-      name: req.body[`certName${index}`] || file.originalname,
-      url: file.path,
-    }));
+    // const userId = req.params.userId;
+    const files = req.files;
+    const docNames = req.body.names;
 
-    servant.certificates.unshift(certificates);
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: "No files uploaded" });
+    }
 
+    const parsedNames = Array.isArray(docNames) ? docNames : [docNames];
+
+    const uploadedDocs = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const uploadResult = await cloudinary.uploads(file.path, {
+        folder: "user_documents",
+        resource_type: "auto",
+      });
+
+      console.log(uploadResult);
+
+      uploadedDocs.push({
+        name: parsedNames[i] || `Document ${i + 1}`,
+        url: uploadResult.url,
+      });
+
+      fs.unlinkSync(file.path); // clean up temp file
+    }
+
+    servant = await Servant.findByIdAndUpdate(
+      servant,
+      { $push: { certificates: { $each: uploadedDocs } } },
+      { new: true, runValidators: true }
+    );
     // servant = await Servant.findByIdAndUpdate(
     //   req.params.servantId,
     //   {

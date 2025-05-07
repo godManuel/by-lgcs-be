@@ -1,3 +1,4 @@
+const { parseBooleanFields } = require("../utils/parseBooleanFields.js");
 const { normalizeServiceArea } = require("../utils/normalizeServiceArea.js");
 const Servant = require("../models/Servant.js");
 const asyncHandler = require("../middlewares/async.js");
@@ -26,7 +27,23 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
   if (!normalized)
     return res.status(400).json({ error: "Invalid serviceArea provided" });
 
+  const booleanFields = [
+    "hasFirstApptLetter",
+    "hasConfirmationLetter",
+    "hasLastPromLetter",
+    "hasProfessionalCert",
+    "hasFSLC",
+    "hasSSCE",
+    "hasFirstDegree",
+    "hasAgeDeclarationORBirthCert",
+    "hasLGACert",
+    "hasChangeOfName",
+    "hasAnyOtherCert",
+  ];
+
   if (role === "superadmin") {
+    parseBooleanFields(req.body, booleanFields);
+
     const servant = await Servant.create({
       serviceRegion: req.body.serviceRegion,
       serviceArea: normalized.value,
@@ -42,6 +59,17 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
       qualification: req.body.qualification,
       currentRank: req.body.currentRank,
       currentGradeLevel: req.body.currentGradeLevel,
+      hasFirstApptLetter: req.body.hasFirstApptLetter,
+      hasConfirmationLetter: req.body.hasConfirmationLetter,
+      hasLastPromLetter: req.body.hasLastPromLetter,
+      hasProfessionalCert: req.body.hasProfessionalCert,
+      hasFSLC: req.body.hasFSLC,
+      hasSSCE: req.body.hasSSCE,
+      hasFirstDegree: req.body.hasFirstDegree,
+      hasAgeDeclarationORBirthCert: req.body.hasAgeDeclarationORBirthCert,
+      hasLGACert: req.body.hasLGACert,
+      hasChangeOfName: req.body.hasChangeofName,
+      hasAnyOtherCert: req.body.hasAnyOtherCert,
     });
 
     res.status(201).json({
@@ -57,8 +85,10 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
       assignedLGAs.includes(serviceArea) ||
       assignedRDAs.includes(serviceArea)
     ) {
+      parseBooleanFields(req.body, booleanFields);
+
       const servant = await Servant.create({
-        serviceRegion: normalized.type,
+        serviceRegion: req.body.serviceRegion,
         serviceArea: normalized.value,
         displayPhoto: newPath.url,
         firstName: req.body.firstName,
@@ -72,6 +102,17 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
         qualification: req.body.qualification,
         currentRank: req.body.currentRank,
         currentGradeLevel: req.body.currentGradeLevel,
+        hasFirstApptLetter: req.body.hasFirstApptLetter,
+        hasConfirmationLetter: req.body.hasConfirmationLetter,
+        hasLastPromLetter: req.body.hasLastPromLetter,
+        hasProfessionalCert: req.body.hasProfessionalCert,
+        hasFSLC: req.body.hasFSLC,
+        hasSSCE: req.body.hasSSCE,
+        hasFirstDegree: req.body.hasFirstDegree,
+        hasAgeDeclarationORBirthCert: req.body.hasAgeDeclarationORBirthCert,
+        hasLGACert: req.body.hasLGACert,
+        hasChangeOfName: req.body.hasChangeofName,
+        hasAnyOtherCert: req.body.hasAnyOtherCert,
       });
 
       res.status(201).json({

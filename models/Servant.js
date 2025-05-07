@@ -67,7 +67,7 @@ const servantSchema = new mongoose.Schema(
     },
     qualification: {
       type: String,
-      enum: ["primary", "secondary", "tertiary"],
+      enum: ["fslc", "ssce", "bsc", "msc"],
       required: true,
     },
     currentRank: {
@@ -79,6 +79,22 @@ const servantSchema = new mongoose.Schema(
       required: true,
     },
     applicantID: String,
+    hasFirstApptLetter: {
+      type: Boolean,
+      default: false,
+    },
+    hasConfirmationLetter: {
+      type: Boolean,
+      default: false,
+    },
+    hasLastPromLetter: {
+      type: Boolean,
+      default: false,
+    },
+    hasProfessionalCert: {
+      type: Boolean,
+      default: false,
+    },
     hasFSLC: {
       type: Boolean,
       default: false,
@@ -99,7 +115,7 @@ const servantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    hasChangeofName: {
+    hasChangeOfName: {
       type: Boolean,
       default: false,
     },

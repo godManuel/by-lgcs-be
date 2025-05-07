@@ -107,6 +107,10 @@ const servantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    hasNYSCORExemptionLetter: {
+      type: Boolean,
+      default: false,
+    },
     hasAgeDeclarationORBirthCert: {
       type: Boolean,
       default: false,

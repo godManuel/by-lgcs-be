@@ -28,7 +28,7 @@ exports.RDAs = {
   "ogboin-north": "Ogboin North (SILGA)",
   "ogboin-south/tarakiri": "Ogboin South/Tarakiri (SILGA)",
   "gbarain-ekpetiama": "Gbarain-Ekpetiama (YELGA)",
-  "okoidia-zarama-biseni": "Okoidia Zarama Biseni (YELGA)",
+  "okordia-zarama-biseni": "Okordia Zarama Biseni (YELGA)",
   yenagoa: "Yenagoa (YELGA)",
 };
 

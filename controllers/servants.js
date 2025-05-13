@@ -1,3 +1,4 @@
+const { RDAs, LGAs } = require("../config/serviceAreas.js");
 const { parseBooleanFields } = require("../utils/parseBooleanFields.js");
 const { normalizeServiceArea } = require("../utils/normalizeServiceArea.js");
 const Servant = require("../models/Servant.js");
@@ -49,12 +50,14 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
       serviceArea: normalized.value,
       displayPhoto: newPath.url,
       firstName: req.body.firstName,
+      middleName: req.body.middleName,
       lastName: req.body.lastName,
       sex: req.body.sex,
       dateOfBirth: req.body.dateOfBirth,
       originLGA: req.body.originLGA,
       firstApptDate: req.body.firstApptDate,
       lastPromDate: req.body.lastPromDate,
+      duePromDate: req.body.duePromDate,
       retireDate: req.body.retireDate,
       qualification: req.body.qualification,
       currentRank: req.body.currentRank,
@@ -133,7 +136,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
 // @ROUTE       POST  /api/v1/civil-servants/
 // @ACCESS      Private
 exports.getCivilServants = asyncHandler(async (req, res, next) => {
-  const { serviceArea } = req.query;
+  const { serviceArea, name } = req.query;
   const { role, assignedRDAs, assignedLGAs } = req.user;
 
   if (role === "superadmin") {
@@ -141,15 +144,65 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
   }
 
   if (role === "admin") {
-    if (
-      assignedLGAs.includes(serviceArea) ||
-      assignedRDAs.includes(serviceArea)
-    ) {
-      res.status(200).json(res.advancedResults);
-    } else {
-      return next(
-        new ErrorResponse("You are not assigned to this region", 403)
+    if (req.query.serviceArea) {
+      if (
+        assignedLGAs.includes(serviceArea) ||
+        assignedRDAs.includes(serviceArea)
+      ) {
+        res.status(200).json(res.advancedResults);
+      } else {
+        return next(
+          new ErrorResponse("You are not assigned to this region", 403)
+        );
+      }
+    }
+
+    if (req.query.name) {
+      const { name } = req.query;
+
+      // Combine all service area mappings
+      const combinedServiceAreas = {
+        ...RDAs,
+        ...LGAs,
+      };
+
+      // All assigned area codes (e.g., ['RDA001', 'LGA002'])
+      const assignedKeys = [...assignedRDAs, ...assignedLGAs];
+
+      // Allowed values from those keys (e.g., ['Yenagoa', 'Sagbama'])
+      const allowedAreaValues = assignedKeys
+        .map((key) => combinedServiceAreas[key])
+        .filter(Boolean);
+
+      // Step 1: Search servants by name
+      const servants = await Servant.find({
+        $or: [
+          { firstName: { $regex: name, $options: "i" } },
+          { lastName: { $regex: name, $options: "i" } },
+        ],
+      });
+
+      if (servants.length === 0) {
+        return next(new ErrorResponse("No servants found!", 403));
+      }
+
+      // Step 2: Filter by allowed service areas
+      const authorizedServants = servants.filter((servant) =>
+        allowedAreaValues.includes(servant.serviceArea)
       );
+
+      if (authorizedServants.length === 0) {
+        return next(
+          new ErrorResponse("You are not assigned to this region", 403)
+        );
+      }
+
+      // Step 3: Return only authorized servants
+      return res.status(200).json({
+        success: true,
+        count: authorizedServants.length,
+        data: authorizedServants,
+      });
     }
   }
 });

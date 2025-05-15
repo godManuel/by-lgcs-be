@@ -79,6 +79,8 @@ exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
     data: {
       email: user.email,
       role: user.role,
+      assignedLGAs: user.assignedLGAs,
+      assignedRDAs: user.assignedRDAs,
       token,
     },
   });

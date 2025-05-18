@@ -160,37 +160,25 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
     }
 
     if (req.query.name) {
-      const { name } = req.query;
-
       // Combine all service area mappings
       const combinedServiceAreas = {
         ...RDAs,
         ...LGAs,
       };
 
-      // All assigned area codes (e.g., ['RDA001', 'LGA002'])
+      // Get all assigned region codes and map them to their actual names
       const assignedKeys = [...assignedRDAs, ...assignedLGAs];
-
-      // Allowed values from those keys (e.g., ['Yenagoa', 'Sagbama'])
       const allowedAreaValues = assignedKeys
         .map((key) => combinedServiceAreas[key])
-        .filter(Boolean);
+        .filter(Boolean)
+        .map((area) => area.toLowerCase()); // Normalize for comparison
 
-      // Step 1: Search servants by name
-      const servants = await Servant.find({
-        $or: [
-          { firstName: { $regex: name, $options: "i" } },
-          { lastName: { $regex: name, $options: "i" } },
-        ],
-      });
+      // Get search results (e.g., from advancedResults middleware)
+      const results = res.advancedResults?.data || [];
 
-      if (servants.length === 0) {
-        return next(new ErrorResponse("No servants found!", 403));
-      }
-
-      // Step 2: Filter by allowed service areas
-      const authorizedServants = servants.filter((servant) =>
-        allowedAreaValues.includes(servant.serviceArea)
+      // Filter results based on service area access
+      const authorizedServants = results.filter((servant) =>
+        allowedAreaValues.includes(servant.serviceArea?.toLowerCase())
       );
 
       if (authorizedServants.length === 0) {
@@ -199,12 +187,46 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
         );
       }
 
-      // Step 3: Return only authorized servants
-      return res.status(200).json({
-        success: true,
-        count: authorizedServants.length,
-        data: authorizedServants,
-      });
+      // Replace data in advancedResults and return
+      res.advancedResults.data = authorizedServants;
+      res.advancedResults.nbHits = authorizedServants.length;
+
+      return res.status(200).json(res.advancedResults);
+    }
+
+    if (req.query.applicantID) {
+      // Combine all service area mappings
+      const combinedServiceAreas = {
+        ...RDAs,
+        ...LGAs,
+      };
+
+      // Get all assigned region codes and map them to actual service area values
+      const assignedKeys = [...assignedRDAs, ...assignedLGAs];
+      const allowedAreaValues = assignedKeys
+        .map((key) => combinedServiceAreas[key])
+        .filter(Boolean)
+        .map((area) => area.toLowerCase()); // Normalize for comparison
+
+      // Get result from advancedResults middleware
+      const results = res.advancedResults?.data || [];
+
+      // Usually applicantID returns a single servant, but we still use array to keep it consistent
+      const authorizedServants = results.filter((servant) =>
+        allowedAreaValues.includes(servant.serviceArea?.toLowerCase())
+      );
+
+      if (authorizedServants.length === 0) {
+        return next(
+          new ErrorResponse("You are not assigned to this region", 403)
+        );
+      }
+
+      // Replace data in advancedResults and return
+      res.advancedResults.data = authorizedServants;
+      res.advancedResults.nbHits = authorizedServants.length;
+
+      return res.status(200).json(res.advancedResults);
     }
   }
 });
@@ -250,7 +272,6 @@ exports.getCivilServant = asyncHandler(async (req, res, next) => {
 // @ROUTE       POST  /api/v1/civil-servants/:id
 // @ACCESS      Private
 exports.updateCivilServant = asyncHandler(async (req, res, next) => {
-  const { serviceArea } = req.body;
   const { role, assignedRDAs, assignedLGAs } = req.user;
 
   if (role === "superadmin") {
@@ -272,30 +293,49 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
   }
 
   if (role === "admin") {
-    if (
-      assignedLGAs.includes(serviceArea) ||
-      assignedRDAs.includes(serviceArea)
-    ) {
-      const servant = await Servant.findById(req.params.servantId);
-      if (!servant) return next(new ErrorResponse("Data not found!", 404));
+    const servantId = req.params.servantId;
 
-      servant = await Servant.findByIdAndUpdate(
-        req.params.servantId,
-        {
-          $set: req.body,
-        },
-        { new: true, runValidators: true }
-      );
+    // Step 1: Fetch the servant by ID
+    const servant = await Servant.findById(servantId);
+    if (!servant) {
+      return next(new ErrorResponse("Civil servant not found", 404));
+    }
 
-      res.status(200).json({
-        success: true,
-        data: { servant },
-      });
-    } else {
+    // Step 2: Combine RDAs and LGAs to match codes to actual area names
+    const combinedServiceAreas = {
+      ...RDAs,
+      ...LGAs,
+    };
+
+    const assignedKeys = [...assignedRDAs, ...assignedLGAs];
+    const allowedAreaValues = assignedKeys
+      .map((key) => combinedServiceAreas[key])
+      .filter(Boolean)
+      .map((area) => area.toLowerCase());
+
+    const servantArea = servant.serviceArea?.toLowerCase();
+
+    // Step 3: Check if servant's serviceArea is in admin's assigned areas
+    if (!allowedAreaValues.includes(servantArea)) {
       return next(
         new ErrorResponse("You are not assigned to this region", 403)
       );
     }
+
+    // Step 4: Proceed with the update
+    const updatedServant = await Servant.findByIdAndUpdate(
+      servantId,
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: updatedServant,
+    });
   }
 });
 

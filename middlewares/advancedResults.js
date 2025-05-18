@@ -13,21 +13,44 @@ const advancedResults = (model, populate) => async (req, res, next) => {
     reqQuery["serviceArea"] = { $regex: serviceArea, $options: "i" };
   }
 
+  if (req.query.applicantID) {
+    const applicantID = req.query.applicantID;
+    reqQuery["applicantID"] = { $regex: applicantID, $options: "i" };
+  }
+
   // Handle name search with aggregation
   if (req.query.name) {
     useAggregate = true;
-    const name = req.query.name.replace(/-/g, " "); // replace hyphens with spaces
-    aggregatePipeline.push({
-      $match: {
-        $expr: {
-          $regexMatch: {
-            input: { $concat: ["$firstName", " ", "$lastName"] },
-            regex: name,
-            options: "i",
+
+    const rawName = req.query.name.trim();
+    const parts = rawName.split("-").filter(Boolean); // remove empty strings
+
+    if (parts.length === 2) {
+      // Full name search (first + last name)
+      const fullNameRegex = `${parts[0]} ${parts[1]}`; // e.g., john doe
+      aggregatePipeline.push({
+        $match: {
+          $expr: {
+            $regexMatch: {
+              input: { $concat: ["$firstName", " ", "$lastName"] },
+              regex: fullNameRegex,
+              options: "i",
+            },
           },
         },
-      },
-    });
+      });
+    } else {
+      // Single name search (matches firstName or lastName)
+      const name = parts[0];
+      aggregatePipeline.push({
+        $match: {
+          $or: [
+            { firstName: { $regex: name, $options: "i" } },
+            { lastName: { $regex: name, $options: "i" } },
+          ],
+        },
+      });
+    }
   } else {
     // Regular query string filtering
     let queryStr = JSON.stringify(reqQuery);

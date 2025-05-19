@@ -325,7 +325,9 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
     // Step 4: Proceed with the update
     const updatedServant = await Servant.findByIdAndUpdate(
       servantId,
-      req.body,
+      {
+        $set: req.body,
+      },
       {
         new: true,
         runValidators: true,

@@ -1,3 +1,4 @@
+const { RDAs, LGAs } = require("../config/serviceAreas.js");
 const asyncHandler = require("../middlewares/async");
 const ErrorResponse = require("../utils/errorResponse");
 const User = require("../models/User");
@@ -74,13 +75,36 @@ exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
 
   await user.save();
 
+  const resolvedLGAs = user.assignedLGAs.map((key) => LGAs[key] || key);
+  const resolvedRDAs = user.assignedRDAs.map((key) => RDAs[key] || key);
+
+  let message = "";
+
+  switch (true) {
+    case resolvedLGAs.length > 0 && resolvedRDAs.length > 0:
+      message = `You are assigned to LGAs: ${resolvedLGAs.join(
+        ", "
+      )} and RDAs: ${resolvedRDAs.join(", ")}`;
+      break;
+
+    case resolvedLGAs.length > 0:
+      message = `You are assigned to LGAs: ${resolvedLGAs.join(", ")}`;
+      break;
+
+    case resolvedRDAs.length > 0:
+      message = `You are assigned to RDAs: ${resolvedRDAs.join(", ")}`;
+      break;
+
+    default:
+      message = `You are not assigned to any LGAs or RDAs yet.`;
+  }
+
   res.status(200).json({
     success: true,
     data: {
       email: user.email,
       role: user.role,
-      assignedLGAs: user.assignedLGAs,
-      assignedRDAs: user.assignedRDAs,
+      message,
       token,
     },
   });

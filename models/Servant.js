@@ -70,7 +70,7 @@ const servantSchema = new mongoose.Schema(
     },
     qualification: {
       type: String,
-      enum: ["fslc", "ssce", "bsc", "msc"],
+      enum: ["fslc", "ssce", "bsc", "msc", "phd"],
       required: true,
     },
     currentRank: {

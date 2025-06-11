@@ -5,7 +5,7 @@ exports.sendEmail = async (to, subject, template, context) => {
   const hbs = (await import("nodemailer-express-handlebars")).default;
 
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
+    host: "mail.bylgsc.by.gov.ng",
     port: 465,
     secure: true,
     auth: {

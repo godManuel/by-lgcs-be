@@ -70,7 +70,7 @@ const servantSchema = new mongoose.Schema(
     },
     qualification: {
       type: String,
-      enum: ["fslc", "ssce", "bsc", "msc", "phd"],
+      enum: ["fslc", "ssce", "nce/diploma", "bsc", "msc", "phd"],
       required: true,
     },
     currentRank: {
@@ -105,6 +105,10 @@ const servantSchema = new mongoose.Schema(
     hasSSCE: {
       type: Boolean,
       default: false,
+    },
+    hasNCEORDiploma: {
+      type: Boolean,
+      default: false
     },
     hasFirstDegree: {
       type: Boolean,

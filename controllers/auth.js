@@ -26,8 +26,6 @@ exports.login = asyncHandler(async (req, res, next) => {
   await user.save();
 
   try {
-    // const sendEmail = await loadSendEmail();
-
     await sendEmail(
       user.email,
       `Your Verification Code is ${emailOTP}`,

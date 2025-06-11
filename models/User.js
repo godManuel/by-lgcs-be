@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const validator = require("validator");
+const { resetPassword } = require("../controllers/auth");
 // const serviceAreas = require("../config/serviceAreas");
 
 const userSchema = new mongoose.Schema({

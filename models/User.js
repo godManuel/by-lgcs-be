@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const validator = require("validator");
-const { resetPassword } = require("../controllers/auth");
 // const serviceAreas = require("../config/serviceAreas");
 
 const userSchema = new mongoose.Schema({
@@ -108,6 +107,4 @@ userSchema.methods.verifyEmailOTP = async function (enteredOTP) {
   return await bcrypt.compare(enteredOTP, this.emailOTP);
 };
 
-const User = mongoose.model("User", userSchema);
-
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);

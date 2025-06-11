@@ -1,7 +1,7 @@
+const User = require("../models/User");
 const { RDAs, LGAs } = require("../config/serviceAreas.js");
 const asyncHandler = require("../middlewares/async");
 const ErrorResponse = require("../utils/errorResponse");
-const User = require("../models/User");
 const { sendEmail } = require("../utils/sendEmail");
 
 // @DESC        Login Admin or Super-Admin

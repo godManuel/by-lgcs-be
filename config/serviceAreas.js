@@ -37,8 +37,8 @@ exports.LGAs = {
   brass: "Brass",
   ekeremor: "Ekeremor",
   "southern-ijaw": "Southern Ijaw",
-  ekeremor: "Ekeremor",
   "kolokuma/opokuma": "Kolokuma/Opokuma",
   nembe: "Nembe",
   ogbia: "Ogbia",
+  sagbama: "Sagbama"
 };

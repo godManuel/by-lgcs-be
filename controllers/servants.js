@@ -40,6 +40,9 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
     "hasLGACert",
     "hasChangeOfName",
     "hasAnyOtherCert",
+    "hasPGD",
+    "hasTradeTestOne",
+    "hasTradeTestTwo"
   ];
 
   if (role === "superadmin") {
@@ -60,6 +63,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
       duePromDate: req.body.duePromDate,
       retireDate: req.body.retireDate,
       qualification: req.body.qualification,
+      department: req.body.department,
       currentRank: req.body.currentRank,
       currentGradeLevel: req.body.currentGradeLevel,
       hasFirstApptLetter: req.body.hasFirstApptLetter,
@@ -106,6 +110,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
         duePromDate: req.body.duePromDate,
         retireDate: req.body.retireDate,
         qualification: req.body.qualification,
+         department: req.body.department,
         currentRank: req.body.currentRank,
         currentGradeLevel: req.body.currentGradeLevel,
         hasFirstApptLetter: req.body.hasFirstApptLetter,

@@ -1,7 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const { registerSuperAdmin, addAdmin } = require("../controllers/users");
+const {
+  registerSuperAdmin,
+  addAdmin,
+  getAllAdmins,
+  updateAdmin,
+} = require("../controllers/users");
 
 const { protect, authorize } = require("../middlewares/auth");
 
@@ -84,5 +89,9 @@ router.route("/register-superadmin").post(registerSuperAdmin);
  */
 // @POST - Add Admin
 router.route("/add-admin").post(protect, authorize("superadmin"), addAdmin);
+
+router.route("/admins").get(protect, authorize("superadmin"), getAllAdmins);
+
+router.route('/admins').put(protect, authorize('superadmin'), updateAdmin);
 
 module.exports = router;

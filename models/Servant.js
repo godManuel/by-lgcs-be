@@ -70,13 +70,24 @@ const servantSchema = new mongoose.Schema(
     },
     qualification: {
       type: String,
-      enum: ["fslc", "ssce", "nce/diploma", "bsc", "msc", "phd"],
+      enum: [
+        "fslc",
+        "ssce",
+        "nce/diploma",
+        "bsc",
+        "msc",
+        "phd",
+        "pgd",
+        "tradetestone",
+        "tradetesttwo",
+        "tradetestthree",
+      ],
       required: true,
     },
     department: {
-      type: String, 
-      enum: ['admin', 'education', 'health', 'works', 'budget', 'treasury'],
-      required: true
+      type: String,
+      enum: ["admin", "education", "health", "works", "budget", "treasury"],
+      required: true,
     },
     currentRank: {
       type: String,
@@ -113,7 +124,7 @@ const servantSchema = new mongoose.Schema(
     },
     hasNCEORDiploma: {
       type: Boolean,
-      default: false
+      default: false,
     },
     hasFirstDegree: {
       type: Boolean,
@@ -121,7 +132,7 @@ const servantSchema = new mongoose.Schema(
     },
     hasPGD: {
       type: Boolean,
-      default: false
+      default: false,
     },
     hasNYSCORExemptionLetter: {
       type: Boolean,
@@ -145,11 +156,15 @@ const servantSchema = new mongoose.Schema(
     },
     hasTradeTestOne: {
       type: Boolean,
-      default: false
+      default: false,
     },
     hasTradeTestTwo: {
       type: Boolean,
-      default: false
+      default: false,
+    },
+    hasTradeTestThree: {
+      type: Boolean,
+      default: false,
     },
     certificates: [certificateSchema],
   },

@@ -39,13 +39,10 @@ exports.addAdmin = asyncHandler(async (req, res, next) => {
   await user.save();
 
   try {
-    // const sendEmail = await loadSendEmail();
-
     await sendEmail(user.email, "Invitation as Admin", "invite-admin", {
       name: user.firstName,
       email: user.email,
-      password: req.body.password,
-      // loginUrl:
+      password: req.body.password
     });
 
     res.status(200).json({
@@ -60,13 +57,6 @@ exports.addAdmin = asyncHandler(async (req, res, next) => {
     console.log(error);
     return next(new ErrorResponse("Email could not be sent", 500));
   }
-
-  // res.status(200).json({
-  //   success: true,
-  //   data: {
-  //     user,
-  //   },
-  // });
 });
 
 // @DESC        Get all users with role of admin. Only allowed for Superadmin

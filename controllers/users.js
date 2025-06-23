@@ -29,12 +29,41 @@ exports.registerSuperAdmin = asyncHandler(async (req, res, next) => {
 // @ROUTE       POST  /api/v1/users/add-admin
 // @ACCESS      Private
 exports.addAdmin = asyncHandler(async (req, res, next) => {
-  const { email } = req.body;
+  const { email, assignedLGAs, assignedRDAs } = req.body;
 
   let user = await User.findOne({ email });
   if (user) return next(new ErrorResponse("User already exists", 400));
 
-  user = await User.create(req.body);
+   let updateFields = {};
+
+  if (assignedLGAs) {
+    const invalidLGAs = assignedLGAs.filter(lgaKey => !(lgaKey in LGAs))
+    if (invalidLGAs.length > 0) {
+      return next(new ErrorResponse(`Invalid assignedLGAs provided: ${invalidLGAs.join(", ")}`, 400));
+    }
+    updateFields.assignedLGAs = assignedLGAs.map(lgaKey => LGAs[lgaKey]);
+  }
+
+  if (assignedRDAs) {
+    const invalidRDAs = assignedRDAs.filter(rdaKey => !(rdaKey in RDAs));
+    if (invalidRDAs.length > 0) {
+      return next(new ErrorResponse(`Invalid assignedRDAs provided: ${invalidRDAs.join(", ")}`, 400));
+    }
+    updateFields.assignedRDAs = assignedRDAs.map(rdaKey => RDAs[rdaKey]);
+  }
+
+  if (Object.keys(updateFields).length === 0) {
+    return next(new ErrorResponse('Only assignedLGAs or assignedRDAs can be updated', 400));
+  }
+
+  user = await User.create({
+    email: req.body.email,
+    firstName: req.body.firstName,
+    lastName: req.body.lastName,
+    password: req.body.password,
+    assignedLGAs: updateFields.assignedLGAs || [],
+    assignedRDAs: updateFields.assignedRDAs || [],
+  });
 
   await user.save();
 

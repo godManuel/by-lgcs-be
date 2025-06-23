@@ -70,6 +70,7 @@ app.use(hpp());
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
 
 app.use("/api/v1/users", users);
+
 app.use("/api/v1/auth", auth);
 app.use("/api/v1/civil-servants", servants);
 app.use("/api/v1/service-areas", serviceAreas);

@@ -94,9 +94,21 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
   }
 
   if (role === "admin") {
+    // Map assigned LGA/RDA values to their keys
+    const assignedLGAKeys = assignedLGAs
+      .map(val => Object.keys(LGAs).find(key => LGAs[key] === val))
+      .filter(Boolean);
+    const assignedRDAKeys = assignedRDAs
+      .map(val => Object.keys(RDAs).find(key => RDAs[key] === val))
+      .filter(Boolean);
+
+    // Check if serviceArea is a valid key in LGAs or RDAs
+    const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
+    const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
+
     if (
-      assignedLGAs.includes(serviceArea) ||
-      assignedRDAs.includes(serviceArea)
+      (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
+      (isRDAKey && assignedRDAKeys.includes(serviceArea))
     ) {
       parseBooleanFields(req.body, booleanFields);
 
@@ -115,7 +127,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
         duePromDate: req.body.duePromDate,
         retireDate: req.body.retireDate,
         qualification: req.body.qualification,
-         department: req.body.department,
+        department: req.body.department,
         currentRank: req.body.currentRank,
         currentGradeLevel: req.body.currentGradeLevel,
         hasFirstApptLetter: req.body.hasFirstApptLetter,

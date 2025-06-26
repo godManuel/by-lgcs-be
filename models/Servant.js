@@ -86,7 +86,7 @@ const servantSchema = new mongoose.Schema(
     },
     department: {
       type: String,
-      enum: ["admin", "education", "health", "works", "budget", "treasury"],
+      enum: ["admin", "education", "health", "works", "budget", "treasury", "agric"],
       required: true,
     },
     currentRank: {
@@ -133,6 +133,14 @@ const servantSchema = new mongoose.Schema(
     hasPGD: {
       type: Boolean,
       default: false,
+    },
+    hasMasters: {
+      type: Boolean,
+      default: false,
+    },
+    hasPhD: {
+      type: Boolean,
+      default: false, 
     },
     hasNYSCORExemptionLetter: {
       type: Boolean,

@@ -148,3 +148,62 @@ exports.updateAdmin = asyncHandler(async (req, res, next) => {
     data: admin,
   });
 });
+// @DESC        Remove assignedLGAs or assignedRDAs from an admin
+// @ROUTE       PUT /api/v1/users/admins/remove-areas
+// @ACCESS      Private (Superadmin only)
+exports.removeAdminAreas = asyncHandler(async (req, res, next) => {
+  const { email, removeLGAs, removeRDAs } = req.body;
+  if (!email) return next(new ErrorResponse('No admin selected', 400));
+
+  // Find the admin first
+  const admin = await User.findOne({ email: email, role: "admin" });
+  if (!admin) {
+    return next(new ErrorResponse("Admin not found", 404));
+  }
+
+  let update = {};
+
+  // Check LGAs
+  if (removeLGAs && removeLGAs.length > 0) {
+    const invalidLGAs = removeLGAs.filter(lgaKey => !(lgaKey in LGAs));
+    if (invalidLGAs.length > 0) {
+      return next(new ErrorResponse(`Invalid LGAs provided: ${invalidLGAs.join(", ")}`, 400));
+    }
+    const lgaValues = removeLGAs.map(lgaKey => LGAs[lgaKey]);
+    const notAssignedLGAs = lgaValues.filter(lga => !admin.assignedLGAs.includes(lga));
+    if (notAssignedLGAs.length > 0) {
+      return next(new ErrorResponse(`Some LGAs are not assigned to this admin: ${notAssignedLGAs.join(", ")}`, 400));
+    }
+    update['assignedLGAs'] = { $in: lgaValues };
+  }
+
+  // Check RDAs
+  if (removeRDAs && removeRDAs.length > 0) {
+    const invalidRDAs = removeRDAs.filter(rdaKey => !(rdaKey in RDAs));
+    if (invalidRDAs.length > 0) {
+      return next(new ErrorResponse(`Invalid RDAs provided: ${invalidRDAs.join(", ")}`, 400));
+    }
+    const rdaValues = removeRDAs.map(rdaKey => RDAs[rdaKey]);
+    const notAssignedRDAs = rdaValues.filter(rda => !admin.assignedRDAs.includes(rda));
+    if (notAssignedRDAs.length > 0) {
+      return next(new ErrorResponse(`Some RDAs are not assigned to this admin: ${notAssignedRDAs.join(", ")}`, 400));
+    }
+    update['assignedRDAs'] = { $in: rdaValues };
+  }
+
+  if (Object.keys(update).length === 0) {
+    return next(new ErrorResponse('No LGAs or RDAs provided for removal', 400));
+  }
+
+  const updatedAdmin = await User.findOneAndUpdate(
+    { email: email, role: "admin" },
+    { $pull: update },
+    { new: true }
+  ).select("-password");
+
+  res.status(200).json({
+    success: true,
+    message: "Areas removed successfully",
+    data: updatedAdmin
+  });
+});

@@ -105,7 +105,7 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   const endIndex = page * limit;
 
   if (useAggregate) {
-    const total = await model.countDocuments();
+    const total = await model.countDocuments(reqQuery);
     aggregatePipeline.push({ $skip: startIndex }, { $limit: limit });
 
     const results = await model.aggregate(aggregatePipeline);
@@ -116,12 +116,13 @@ const advancedResults = (model, populate) => async (req, res, next) => {
 
     res.advancedResults = {
       success: true,
+      total,
       nbHits: results.length,
       pagination,
       data: results,
     };
   } else {
-    const total = await model.countDocuments();
+    const total = await model.countDocuments(reqQuery);
     query = query.skip(startIndex).limit(limit);
     if (populate) query = query.populate(populate);
 
@@ -133,6 +134,7 @@ const advancedResults = (model, populate) => async (req, res, next) => {
 
     res.advancedResults = {
       success: true,
+      total,
       nbHits: results.length,
       pagination,
       data: results,

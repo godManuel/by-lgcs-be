@@ -6,6 +6,7 @@ const {
   addAdmin,
   getAllAdmins,
   updateAdmin,
+  removeAdminAreas,
 } = require("../controllers/users");
 
 const { protect, authorize } = require("../middlewares/auth");
@@ -93,5 +94,7 @@ router.route("/add-admin").post(protect, authorize("superadmin"), addAdmin);
 router.route("/admins").get(protect, authorize("superadmin"), getAllAdmins);
 
 router.route('/admins').put(protect, authorize('superadmin'), updateAdmin);
+
+router.route('/admins/remove-areas').put(protect, authorize('superadmin'), removeAdminAreas);
 
 module.exports = router;

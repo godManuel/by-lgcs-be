@@ -73,7 +73,7 @@ const servantSchema = new mongoose.Schema(
       enum: [
         "fslc",
         "ssce",
-        "nce/diploma",
+        "nce",
         "bsc",
         "msc",
         "phd",
@@ -81,6 +81,16 @@ const servantSchema = new mongoose.Schema(
         "tradetestone",
         "tradetesttwo",
         "tradetestthree",
+        "nabteb",
+        "nabteb-advanced",
+        "jchew",
+        "chew",
+        "ond",
+        "hnd",
+        "bl",
+        "llb",
+        "lld",
+        "llm"
       ],
       required: true,
     },
@@ -122,10 +132,50 @@ const servantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    hasNCEORDiploma: {
+    hasNCE: {
       type: Boolean,
       default: false,
     },
+    hasOND: {
+      type: Boolean,
+      default: false,
+    },
+    hasHND: {
+      type: Boolean,
+      default: false,
+    },
+    hasBL: {
+      type: Boolean,
+      default: false,
+    },
+    hasLLB: {
+      type: Boolean,
+      default: false,
+    },
+    hasLLD: {
+      type: Boolean,
+      default: false,
+    },
+    hasLLM: {
+      type: Boolean,
+      default: false,
+    },
+    hasNabteb: {
+      type: Boolean,
+      default: false, 
+    },
+    hasNabtebAdvanced: {  
+      type: Boolean,
+      default: false,
+    },
+    hasJChew: {
+      type: Boolean,
+      default: false,
+    },
+    hasChew: {
+      type: Boolean,
+      default: false,
+    },     
     hasFirstDegree: {
       type: Boolean,
       default: false,
@@ -196,7 +246,8 @@ servantSchema.pre("save", async function (next) {
     this.age = age; // Automatically store the calculated age
   }
 
-  if (this.isNew) {
+  if (this.isNew ||
+    this.isModified("serviceArea")) {
     const serviceAreaCode = this.serviceArea.substring(0, 3).toUpperCase();
     const serviceRegionCode = this.serviceRegion.toUpperCase();
 

@@ -58,7 +58,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
     "hasTradeTestOne",
     "hasTradeTestTwo",
     "hasTradeTestThree",
-    "hasCertificate"
+    "hasCertificate",
   ];
 
   if (role === "superadmin") {
@@ -114,7 +114,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
       hasTradeTestTwo: req.body.hasTradeTestTwo,
       hasTradeTestThree: req.body.hasTradeTestThree,
       hasAnyOtherCert: req.body.hasAnyOtherCert,
-      hasCertificate: req.body.hasCertificate
+      hasCertificate: req.body.hasCertificate,
     });
 
     res.status(201).json({
@@ -159,7 +159,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
         lastPromDate: req.body.lastPromDate,
         duePromDate: req.body.duePromDate,
         retireByAge: req.body.retireByAge,
-      retireByService: req.body.retireByService,
+        retireByService: req.body.retireByService,
         qualification: req.body.qualification,
         department: req.body.department,
         currentRank: req.body.currentRank,
@@ -194,7 +194,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
         hasTradeTestTwo: req.body.hasTradeTestTwo,
         hasTradeTestThree: req.body.hasTradeTestThree,
         hasAnyOtherCert: req.body.hasAnyOtherCert,
-        hasCertificate: req.body.hasCertificate
+        hasCertificate: req.body.hasCertificate,
       });
 
       res.status(201).json({

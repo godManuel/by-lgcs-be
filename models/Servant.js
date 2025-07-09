@@ -90,7 +90,8 @@ const servantSchema = new mongoose.Schema(
         "bl",
         "llb",
         "lld",
-        "llm"
+        "llm",
+        "certificate"
       ],
       required: true,
     },
@@ -221,6 +222,10 @@ const servantSchema = new mongoose.Schema(
       default: false,
     },
     hasTradeTestThree: {
+      type: Boolean,
+      default: false,
+    },
+    hasCertificate: {
       type: Boolean,
       default: false,
     },

@@ -39,6 +39,9 @@ const servantSchema = new mongoose.Schema(
     age: {
       type: Number,
     },
+    phone: {
+      type: String,
+    },
     originLGA: {
       type: String,
       enum: [

@@ -72,6 +72,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
       middleName: req.body.middleName,
       lastName: req.body.lastName,
       sex: req.body.sex,
+      phone: req.body.phone,
       dateOfBirth: req.body.dateOfBirth,
       originLGA: req.body.originLGA,
       firstApptDate: req.body.firstApptDate,
@@ -150,6 +151,7 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
         middleName: req.body.middleName,
         lastName: req.body.lastName,
         sex: req.body.sex,
+        phone: req.body.phone, // Added phone field
         dateOfBirth: req.body.dateOfBirth,
         originLGA: req.body.originLGA,
         firstApptDate: req.body.firstApptDate,

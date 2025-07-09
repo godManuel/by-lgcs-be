@@ -67,7 +67,11 @@ const servantSchema = new mongoose.Schema(
     duePromDate: {
       type: Date,
     },
-    retireDate: {
+    retireByAge: {
+      type: Date,
+      required: true,
+    },
+    retireByService: {
       type: Date,
       required: true,
     },

@@ -78,8 +78,9 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
       firstApptDate: req.body.firstApptDate,
       lastPromDate: req.body.lastPromDate,
       duePromDate: req.body.duePromDate,
-      retireByAge: req.body.retireByAge,
-      retireByService: req.body.retireByService,
+      // retireByAge: req.body.retireByAge,
+      // retireByService: req.body.retireByService,
+      retireDate: req.body.retireDate, // Added retireDate field
       qualification: req.body.qualification,
       department: req.body.department,
       currentRank: req.body.currentRank,
@@ -158,8 +159,9 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
         firstApptDate: req.body.firstApptDate,
         lastPromDate: req.body.lastPromDate,
         duePromDate: req.body.duePromDate,
-        retireByAge: req.body.retireByAge,
-        retireByService: req.body.retireByService,
+        // retireByAge: req.body.retireByAge,
+        // retireByService: req.body.retireByService,
+        retireDate: req.body.retireDate, // Added retireDate field
         qualification: req.body.qualification,
         department: req.body.department,
         currentRank: req.body.currentRank,

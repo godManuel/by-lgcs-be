@@ -80,6 +80,9 @@ const servantSchema = new mongoose.Schema(
       enum: ["age", "service"],
       required: true,
     },
+    retireStatus: {
+      type: String
+    },
     retireDate: {
       type: Date,
       // required: true

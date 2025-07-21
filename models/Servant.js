@@ -67,25 +67,11 @@ const servantSchema = new mongoose.Schema(
     duePromDate: {
       type: Date,
     },
-    // retireByAge: {
-    //   type: Date,
-    //   required: true,
-    // },
-    // retireByService: {
-    //   type: Date,
-    //   required: true,
-    // },
-    retireType: {
-      type: String,
-      enum: ["age", "service"],
-      required: true,
-    },
-    retireStatus: {
-      type: String
-    },
-    retireDate: {
+    retireByAge: {
       type: Date,
-      // required: true
+    },
+    retireByService: {
+      type: Date,
     },
     qualification: {
       type: String,

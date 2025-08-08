@@ -3,7 +3,7 @@ exports.RDAs = {
   brass: "Brass (Brass)",
   "kaiko/ibeawo": "Kaiko/Ibeawo (Brass)",
   alabini: "Alabini (Ekeremor)",
-  alabiri: "Alabiri (Ekeremor)",
+  aleibiri: "Aleibiri (Ekeremor)",
   ekeremor: "Ekeremor (Ekeremor)",
   "oporomor-west": "Oporomor West (Ekeremor)",
   "opuokede-creek": "Opuokede Creek (Ekeremor)",
@@ -30,6 +30,7 @@ exports.RDAs = {
   "gbarain-ekpetiama": "Gbarain-Ekpetiama (YELGA)",
   "okordia-zarama-biseni": "Okordia Zarama Biseni (YELGA)",
   yenagoa: "Yenagoa (YELGA)",
+  "southern-ijaw" : "Southern-Ijaw (SILGA)"
 };
 
 exports.LGAs = {

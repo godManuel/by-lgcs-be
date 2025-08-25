@@ -103,8 +103,6 @@ router
 
 router.route("/update-service-areas").put(fixServiceArea);
 
-router
-  .route("/admins/:id")
-  .delete(protect, authorize("superadmin"), deleteAdmin);
+router.route("/admins/").delete(protect, authorize("superadmin"), deleteAdmin);
 
 module.exports = router;

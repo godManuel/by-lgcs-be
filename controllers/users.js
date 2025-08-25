@@ -173,6 +173,7 @@ exports.updateAdmin = asyncHandler(async (req, res, next) => {
     data: admin,
   });
 });
+
 // @DESC        Remove assignedLGAs or assignedRDAs from an admin
 // @ROUTE       PUT /api/v1/users/admins/remove-areas
 // @ACCESS      Private (Superadmin only)
@@ -298,4 +299,20 @@ exports.fixServiceArea = asyncHandler(async (req, res) => {
     console.error("Error updating serviceArea:", error);
     return res.status(500).json({ message: "Internal server error." });
   }
+});
+
+exports.deleteAdmin = asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+  if (!email) return next(new ErrorResponse("No admin selected", 400));
+
+  const admin = await User.findOneAndDelete({ email, role: "admin" });
+  if (!admin) {
+    return next(new ErrorResponse("Admin not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Admin removed successfully",
+    data: {},
+  });
 });

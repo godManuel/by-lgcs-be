@@ -302,7 +302,7 @@ exports.fixServiceArea = asyncHandler(async (req, res) => {
 });
 
 exports.deleteAdmin = asyncHandler(async (req, res, next) => {
-  const { email } = req.body;
+  const { email } = req.query;
   if (!email) return next(new ErrorResponse("No admin selected", 400));
 
   const admin = await User.findOneAndDelete({ email, role: "admin" });

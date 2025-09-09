@@ -73,6 +73,15 @@ const servantSchema = new mongoose.Schema(
     retireByService: {
       type: Date,
     },
+    isRetired: {
+      type: Boolean,
+      default: false,
+    },
+    retirementStatus: {
+      type: String,
+      enum: ["active", "dueByAge", "dueByService"],
+      default: "active",
+    },
     qualification: {
       type: String,
       enum: [
@@ -96,13 +105,21 @@ const servantSchema = new mongoose.Schema(
         "llb",
         "lld",
         "llm",
-        "certificate"
+        "certificate",
       ],
       required: true,
     },
     department: {
       type: String,
-      enum: ["admin", "education", "health", "works", "budget", "treasury", "agric"],
+      enum: [
+        "admin",
+        "education",
+        "health",
+        "works",
+        "budget",
+        "treasury",
+        "agric",
+      ],
       required: true,
     },
     currentRank: {
@@ -168,9 +185,9 @@ const servantSchema = new mongoose.Schema(
     },
     hasNabteb: {
       type: Boolean,
-      default: false, 
+      default: false,
     },
-    hasNabtebAdvanced: {  
+    hasNabtebAdvanced: {
       type: Boolean,
       default: false,
     },
@@ -181,7 +198,7 @@ const servantSchema = new mongoose.Schema(
     hasChew: {
       type: Boolean,
       default: false,
-    },     
+    },
     hasFirstDegree: {
       type: Boolean,
       default: false,
@@ -196,7 +213,7 @@ const servantSchema = new mongoose.Schema(
     },
     hasPhD: {
       type: Boolean,
-      default: false, 
+      default: false,
     },
     hasNYSCORExemptionLetter: {
       type: Boolean,
@@ -256,8 +273,7 @@ servantSchema.pre("save", async function (next) {
     this.age = age; // Automatically store the calculated age
   }
 
-  if (this.isNew ||
-    this.isModified("serviceArea")) {
+  if (this.isNew || this.isModified("serviceArea")) {
     const serviceAreaCode = this.serviceArea.substring(0, 3).toUpperCase();
     const serviceRegionCode = this.serviceRegion.toUpperCase();
 

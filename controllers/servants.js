@@ -6,6 +6,7 @@ const asyncHandler = require("../middlewares/async.js");
 const ErrorResponse = require("../utils/errorResponse.js");
 const cloudinary = require("../utils/cloudinary.js");
 const fs = require("fs");
+const { getRetirementStatus } = require("../utils/retireStatus.js");
 
 // @DESC        Add Civil Servant
 // @ROUTE       POST  /api/v1/civil-servants/
@@ -219,7 +220,17 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
   const { role, assignedRDAs, assignedLGAs } = req.user;
 
   if (role === "superadmin") {
-    res.status(200).json(res.advancedResults);
+    const { success, nbHits, data, total, pagination } = res.advancedResults;
+
+    const transResults = data.map(getRetirementStatus);
+
+    res.status(200).json({
+      success,
+      total,
+      nbHits,
+      pagination,
+      data: transResults,
+    });
   }
 
   if (role === "admin") {
@@ -239,7 +250,16 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
         (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
         (isRDAKey && assignedRDAKeys.includes(serviceArea))
       ) {
-        res.status(200).json(res.advancedResults);
+        const { success, count, pagination, data } = res.advancedResults;
+
+        const transformedData = data.map(getRetirementStatus);
+
+        return res.status(200).json({
+          success,
+          count,
+          pagination,
+          data: transformedData,
+        });
       } else {
         return next(
           new ErrorResponse("You are not assigned to this region", 403)
@@ -275,9 +295,10 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
         );
       }
 
-      // Replace data in advancedResults and return
-      res.advancedResults.data = authorizedServants;
-      res.advancedResults.nbHits = authorizedServants.length;
+      const transformedServants = authorizedServants.map(getRetirementStatus);
+
+      res.advancedResults.data = transformedServants;
+      res.advancedResults.nbHits = transformedServants.length;
 
       return res.status(200).json(res.advancedResults);
     }
@@ -310,9 +331,10 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
         );
       }
 
-      // Replace data in advancedResults and return
-      res.advancedResults.data = authorizedServants;
-      res.advancedResults.nbHits = authorizedServants.length;
+      const transformedServants = authorizedServants.map(getRetirementStatus);
+
+      res.advancedResults.data = transformedServants;
+      res.advancedResults.nbHits = transformedServants.length;
 
       return res.status(200).json(res.advancedResults);
     }

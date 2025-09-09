@@ -12,9 +12,11 @@ exports.getRetirementStatus = (servant) => {
     status = "dueByService";
   }
 
+  const plainServant = servant.toObject ? servant.toObject() : servant;
+
   return {
-    ...servant,
-    isRetired: ageDue || serviceDue, // boolean flag
-    retirementStatus: status, // string: "active" | "dueByAge" | "dueByService"
+    ...plainServant,
+    isRetired: ageDue || serviceDue,
+    retirementStatus: status,
   };
 };

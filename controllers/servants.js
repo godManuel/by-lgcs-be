@@ -451,6 +451,56 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
   }
 });
 
+
+// ...existing code...
+
+// @DESC        Delete Civil Servant
+// @ROUTE       DELETE  /api/v1/civil-servants/:id
+// @ACCESS      Private
+exports.deleteCivilServant = asyncHandler(async (req, res, next) => {
+  const { role, assignedRDAs, assignedLGAs } = req.user;
+  const servantId = req.params.servantId;
+
+  if (role === "superadmin") {
+    const servant = await Servant.findById(servantId);
+    if (!servant) return next(new ErrorResponse("Data not found!", 404));
+
+    await Servant.findByIdAndDelete(servantId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Civil servant deleted successfully",
+    });
+  }
+
+  if (role === "admin") {
+    const servant = await Servant.findById(servantId);
+    if (!servant) return next(new ErrorResponse("Civil servant not found", 404));
+
+    // Combine RDAs and LGAs to match codes to actual area names
+    const combinedServiceAreas = { ...RDAs, ...LGAs };
+    const assignedKeys = [...assignedRDAs, ...assignedLGAs];
+    const allowedAreaValues = assignedKeys
+      .map((key) => combinedServiceAreas[key])
+      .filter(Boolean)
+      .map((area) => area.toLowerCase());
+
+    const servantArea = servant.serviceArea?.toLowerCase();
+
+    // Check if servant's serviceArea is in admin's assigned areas
+    if (!allowedAreaValues.includes(servantArea)) {
+      return next(new ErrorResponse("You are not assigned to this region", 403));
+    }
+
+    await Servant.findByIdAndDelete(servantId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Civil servant deleted successfully",
+    });
+  }
+});
+
 // @DESC        Upload Certificates for Civil Servant
 // @ROUTE       POST  /api/v1/civil-servants/:id/certificates
 // @ACCESS      Private

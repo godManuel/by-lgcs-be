@@ -9,6 +9,7 @@ const {
   getCivilServants,
   updateCivilServant,
   uploadCerts,
+  deleteCivilServant,
 } = require("../controllers/servants");
 
 const { protect, authorize } = require("../middlewares/auth");
@@ -204,6 +205,10 @@ router
 router
   .route("/:servantId")
   .put(protect, authorize("superadmin", "admin"), updateCivilServant);
+
+router
+  .route("/:servantId")
+  .delete(protect, authorize("superadmin", "admin"), deleteCivilServant);
 
 router
   .route("/:servantId/certificates")

@@ -14,7 +14,11 @@ exports.registerSuperAdmin = asyncHandler(async (req, res, next) => {
   let user = await User.findOne({ email });
   if (user) return next(new ErrorResponse("User already exists", 400));
 
-  user = await User.create(req.body);
+  user = await User.create({
+    email: req.body.email,
+    password: req.body.password,
+    role: "superadmin",
+  });
   await user.save();
 
   res.status(200).json({
@@ -43,8 +47,8 @@ exports.addAdmin = asyncHandler(async (req, res, next) => {
       return next(
         new ErrorResponse(
           `Invalid assignedLGAs provided: ${invalidLGAs.join(", ")}`,
-          400
-        )
+          400,
+        ),
       );
     }
     updateFields.assignedLGAs = assignedLGAs.map((lgaKey) => LGAs[lgaKey]);
@@ -56,8 +60,8 @@ exports.addAdmin = asyncHandler(async (req, res, next) => {
       return next(
         new ErrorResponse(
           `Invalid assignedRDAs provided: ${invalidRDAs.join(", ")}`,
-          400
-        )
+          400,
+        ),
       );
     }
     updateFields.assignedRDAs = assignedRDAs.map((rdaKey) => RDAs[rdaKey]);
@@ -65,7 +69,10 @@ exports.addAdmin = asyncHandler(async (req, res, next) => {
 
   if (Object.keys(updateFields).length === 0) {
     return next(
-      new ErrorResponse("Only assignedLGAs or assignedRDAs can be updated", 400)
+      new ErrorResponse(
+        "Only assignedLGAs or assignedRDAs can be updated",
+        400,
+      ),
     );
   }
 
@@ -132,8 +139,8 @@ exports.updateAdmin = asyncHandler(async (req, res, next) => {
       return next(
         new ErrorResponse(
           `Invalid assignedLGAs provided: ${invalidLGAs.join(", ")}`,
-          400
-        )
+          400,
+        ),
       );
     }
     updateFields.assignedLGAs = assignedLGAs.map((lgaKey) => LGAs[lgaKey]);
@@ -145,8 +152,8 @@ exports.updateAdmin = asyncHandler(async (req, res, next) => {
       return next(
         new ErrorResponse(
           `Invalid assignedRDAs provided: ${invalidRDAs.join(", ")}`,
-          400
-        )
+          400,
+        ),
       );
     }
     updateFields.assignedRDAs = assignedRDAs.map((rdaKey) => RDAs[rdaKey]);
@@ -154,14 +161,17 @@ exports.updateAdmin = asyncHandler(async (req, res, next) => {
 
   if (Object.keys(updateFields).length === 0) {
     return next(
-      new ErrorResponse("Only assignedLGAs or assignedRDAs can be updated", 400)
+      new ErrorResponse(
+        "Only assignedLGAs or assignedRDAs can be updated",
+        400,
+      ),
     );
   }
 
   const admin = await User.findOneAndUpdate(
     { email: email, role: "admin" },
     { $addToSet: updateFields },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   ).select("-password");
 
   if (!admin) {
@@ -196,22 +206,22 @@ exports.removeAdminAreas = asyncHandler(async (req, res, next) => {
       return next(
         new ErrorResponse(
           `Invalid LGAs provided: ${invalidLGAs.join(", ")}`,
-          400
-        )
+          400,
+        ),
       );
     }
     const lgaValues = removeLGAs.map((lgaKey) => LGAs[lgaKey]);
     const notAssignedLGAs = lgaValues.filter(
-      (lga) => !admin.assignedLGAs.includes(lga)
+      (lga) => !admin.assignedLGAs.includes(lga),
     );
     if (notAssignedLGAs.length > 0) {
       return next(
         new ErrorResponse(
           `Some LGAs are not assigned to this admin: ${notAssignedLGAs.join(
-            ", "
+            ", ",
           )}`,
-          400
-        )
+          400,
+        ),
       );
     }
     update["assignedLGAs"] = { $in: lgaValues };
@@ -224,22 +234,22 @@ exports.removeAdminAreas = asyncHandler(async (req, res, next) => {
       return next(
         new ErrorResponse(
           `Invalid RDAs provided: ${invalidRDAs.join(", ")}`,
-          400
-        )
+          400,
+        ),
       );
     }
     const rdaValues = removeRDAs.map((rdaKey) => RDAs[rdaKey]);
     const notAssignedRDAs = rdaValues.filter(
-      (rda) => !admin.assignedRDAs.includes(rda)
+      (rda) => !admin.assignedRDAs.includes(rda),
     );
     if (notAssignedRDAs.length > 0) {
       return next(
         new ErrorResponse(
           `Some RDAs are not assigned to this admin: ${notAssignedRDAs.join(
-            ", "
+            ", ",
           )}`,
-          400
-        )
+          400,
+        ),
       );
     }
     update["assignedRDAs"] = { $in: rdaValues };
@@ -252,7 +262,7 @@ exports.removeAdminAreas = asyncHandler(async (req, res, next) => {
   const updatedAdmin = await User.findOneAndUpdate(
     { email: email, role: "admin" },
     { $pull: update },
-    { new: true }
+    { new: true },
   ).select("-password");
 
   res.status(200).json({
@@ -283,7 +293,7 @@ exports.fixServiceArea = asyncHandler(async (req, res) => {
 
       await Servant.updateMany(
         { _id: { $in: userIds } },
-        { $set: { serviceArea: "Aleibiri (Ekeremor)" } }
+        { $set: { serviceArea: "Aleibiri (Ekeremor)" } },
       );
 
       updatedCount += users.length;

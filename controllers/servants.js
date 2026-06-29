@@ -14,7 +14,14 @@ exports.createCivilServantDraft = asyncHandler(async (req, res) => {
   const servant = await Servant.create({
     currentStep: 1,
     formStatus: "draft",
-    createdBy: req.user.id,
+    admin: req.user.id,
+  });
+
+  await User.findByIdAndUpdate(req.user._id, {
+    $inc: {
+      "statistics.totalServants": 1,
+      "statistics.totalDrafts": 1,
+    },
   });
 
   res.status(201).json({
@@ -312,6 +319,13 @@ exports.submitCivilServant = asyncHandler(async (req, res, next) => {
       servant.currentStep = 4;
 
       await servant.save();
+
+      await User.findByIdAndUpdate(req.user._id, {
+        $inc: {
+          "statistics.completedServants": 1,
+          "statistics.totalDrafts": -1,
+        },
+      });
 
       res.json({
         success: true,
@@ -861,19 +875,18 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
     }
 
     servant = await Servant.findByIdAndUpdate(
-      servant,
-      { $set: { certificates: { $each: uploadedDocs } } },
+      servant._id,
+      { $push: { certificates: { $each: uploadedDocs } } },
       { new: true, runValidators: true },
     );
-    // servant = await Servant.findByIdAndUpdate(
-    //   req.params.servantId,
-    //   {
-    //     $set: {
-    //       certificates: [certificates],
-    //     },
-    //   },
-    //   { new: true, runValidators: true }
-    // );
+
+    const uploadedCount = uploadedDocs.length;
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $inc: {
+        "statistics.totalDocumentsUploaded": uploadedCount,
+      },
+    });
 
     res.status(200).json({
       success: true,
@@ -933,10 +946,18 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
     }
 
     servant = await Servant.findByIdAndUpdate(
-      servant,
-      { $set: { certificates: { $each: uploadedDocs } } },
+      servant._id,
+      { $push: { certificates: { $each: uploadedDocs } } },
       { new: true, runValidators: true },
     );
+
+    const uploadedCount = uploadedDocs.length;
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $inc: {
+        "statistics.totalDocumentsUploaded": uploadedCount,
+      },
+    });
 
     res.status(200).json({
       success: true,

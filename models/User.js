@@ -53,6 +53,27 @@ const userSchema = new mongoose.Schema({
     //   message: "assignedLGAs must contain at least one value!",
     // },
   },
+  statistics: {
+    totalServants: {
+      type: Number,
+      default: 0,
+    },
+
+    totalDrafts: {
+      type: Number,
+      default: 0,
+    },
+
+    completedServants: {
+      type: Number,
+      default: 0,
+    },
+
+    totalDocumentsUploaded: {
+      type: Number,
+      default: 0,
+    },
+  },
   emailOTP: String,
   emailOTPExpire: Date,
 });
@@ -78,7 +99,7 @@ userSchema.methods.getSignedToken = function () {
     process.env.JWT_SECRET,
     {
       expiresIn: process.env.JWT_EXPIRY,
-    }
+    },
   );
 };
 

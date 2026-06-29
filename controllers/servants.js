@@ -1,128 +1,66 @@
 const { RDAs, LGAs } = require("../config/serviceAreas.js");
-const { parseBooleanFields } = require("../utils/parseBooleanFields.js");
-const { normalizeServiceArea } = require("../utils/normalizeServiceArea.js");
 const Servant = require("../models/Servant.js");
 const asyncHandler = require("../middlewares/async.js");
 const ErrorResponse = require("../utils/errorResponse.js");
 const cloudinary = require("../utils/cloudinary.js");
 const fs = require("fs");
 const { getRetirementStatus } = require("../utils/retireStatus.js");
+const buildServantPayload = require("../utils/buildServantPayload.js");
 
-// @DESC        Add Civil Servant
+// @DESC        Create Civil Servant Draft
 // @ROUTE       POST  /api/v1/civil-servants/
 // @ACCESS      Private
-exports.addCivilServant = asyncHandler(async (req, res, next) => {
-  const uploader = async (path) =>
-    await cloudinary.uploads(path, "civil-servants");
+exports.createCivilServantDraft = asyncHandler(async (req, res) => {
+  const servant = await Servant.create({
+    currentStep: 1,
+    formStatus: "draft",
+    createdBy: req.user.id,
+  });
 
-  const { path } = req.file;
-  const newPath = await uploader(path);
-  fs.unlinkSync(path);
+  res.status(201).json({
+    success: true,
+    data: servant,
+  });
+});
 
+// @DESC        Update Civil Servant Personal Information
+// @ROUTE       PATCH  /api/v1/civil-servants/:id/personal
+// @ACCESS      Private
+exports.updatePersonalInformation = asyncHandler(async (req, res, next) => {
   const { serviceArea, serviceRegion } = req.body;
   const { role, assignedRDAs, assignedLGAs } = req.user;
 
-  // console.log(req.body);
-
-  const normalized = normalizeServiceArea(serviceRegion, serviceArea);
-
-  if (!normalized)
-    return res.status(400).json({ error: "Invalid serviceArea provided" });
-
-  const booleanFields = [
-    "hasFirstApptLetter",
-    "hasConfirmationLetter",
-    "hasLastPromLetter",
-    "hasProfessionalCert",
-    "hasFSLC",
-    "hasNCE",
-    "hasOND",
-    "hasHND",
-    "hasBL",
-    "hasLLB",
-    "hasLLD",
-    "hasLLM",
-    "hasNabteb",
-    "hasNabtebAdvanced",
-    "hasJchew",
-    "hasChew",
-    "hasNYSCORExemptionLetter",
-    "hasSSCE",
-    "hasFirstDegree",
-    "hasAgeDeclarationORBirthCert",
-    "hasLGACert",
-    "hasChangeOfName",
-    "hasAnyOtherCert",
-    "hasPGD",
-    "hasMasters",
-    "hasPhD",
-    "hasTradeTestOne",
-    "hasTradeTestTwo",
-    "hasTradeTestThree",
-    "hasCertificate",
-  ];
-
   if (role === "superadmin") {
-    parseBooleanFields(req.body, booleanFields);
+    const servant = await Servant.findById(req.params.id);
 
-    const servant = await Servant.create({
-      serviceRegion: req.body.serviceRegion,
-      serviceArea: normalized.value,
-      displayPhoto: newPath.url,
-      firstName: req.body.firstName,
-      middleName: req.body.middleName,
-      lastName: req.body.lastName,
-      sex: req.body.sex,
-      phone: req.body.phone,
-      dateOfBirth: req.body.dateOfBirth,
-      originLGA: req.body.originLGA,
-      firstApptDate: req.body.firstApptDate,
-      lastPromDate: req.body.lastPromDate,
-      duePromDate: req.body.duePromDate,
-      retireByAge: req.body.retireByAge,
-      retireByService: req.body.retireByService,
-      qualification: req.body.qualification,
-      department: req.body.department,
-      currentRank: req.body.currentRank,
-      currentGradeLevel: req.body.currentGradeLevel,
-      hasFirstApptLetter: req.body.hasFirstApptLetter,
-      hasConfirmationLetter: req.body.hasConfirmationLetter,
-      hasLastPromLetter: req.body.hasLastPromLetter,
-      hasProfessionalCert: req.body.hasProfessionalCert,
-      hasFSLC: req.body.hasFSLC,
-      hasSSCE: req.body.hasSSCE,
-      hasNCE: req.body.hasNCE,
-      hasOND: req.body.hasOND,
-      hasHND: req.body.hasHND,
-      hasBL: req.body.hasBL,
-      hasLLB: req.body.hasLLB,
-      hasLLD: req.body.hasLLD,
-      hasLLM: req.body.hasLLM,
-      hasNabteb: req.body.hasNabteb,
-      hasNabtebAdvanced: req.body.hasNabtebAdvanced,
-      hasJchew: req.body.hasJchew,
-      hasChew: req.body.hasChew,
-      hasFirstDegree: req.body.hasFirstDegree,
-      hasNYSCORExemptionLetter: req.body.hasNYSCORExemptionLetter,
-      hasMasters: req.body.hasMasters,
-      hasPhD: req.body.hasPhD,
-      hasNYSCORExemptionLetter: req.body.hasNYSCORExemptionLetter,
-      hasAgeDeclarationORBirthCert: req.body.hasAgeDeclarationORBirthCert,
-      hasLGACert: req.body.hasLGACert,
-      hasChangeOfName: req.body.hasChangeofName,
-      hasPGD: req.body.hasPGD,
-      hasTradeTestOne: req.body.hasTradeTestOne,
-      hasTradeTestTwo: req.body.hasTradeTestTwo,
-      hasTradeTestThree: req.body.hasTradeTestThree,
-      hasAnyOtherCert: req.body.hasAnyOtherCert,
-      hasCertificate: req.body.hasCertificate,
+    if (!servant) {
+      return next(new ErrorResponse("Civil servant not found", 404));
+    }
+
+    Object.assign(servant, buildServantPayload(req.body));
+
+    // Generate Applicant ID here
+    const serviceAreaCode = servant.serviceArea.substring(0, 3).toUpperCase();
+    const serviceRegionCode = servant.serviceRegion.toUpperCase();
+
+    const servantCount = await Servant.countDocuments({
+      serviceArea: servant.serviceArea,
     });
 
-    res.status(201).json({
+    servant.applicantID = `BY/LGSC/${serviceRegionCode}/${serviceAreaCode}/${(
+      servantCount + 1
+    )
+      .toString()
+      .padStart(3, "0")}`;
+
+    servant.currentStep = 1;
+
+    await servant.save();
+
+    res.json({
       success: true,
-      data: {
-        servant,
-      },
+      message: "Personal information added successfully",
+      data: servant,
     });
   }
 
@@ -143,74 +81,456 @@ exports.addCivilServant = asyncHandler(async (req, res, next) => {
       (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
       (isRDAKey && assignedRDAKeys.includes(serviceArea))
     ) {
-      parseBooleanFields(req.body, booleanFields);
+      const servant = await Servant.findById(req.params.id);
 
-      const servant = await Servant.create({
-        serviceRegion: req.body.serviceRegion,
-        serviceArea: normalized.value,
-        displayPhoto: newPath.url,
-        firstName: req.body.firstName,
-        middleName: req.body.middleName,
-        lastName: req.body.lastName,
-        sex: req.body.sex,
-        phone: req.body.phone, // Added phone field
-        dateOfBirth: req.body.dateOfBirth,
-        originLGA: req.body.originLGA,
-        firstApptDate: req.body.firstApptDate,
-        lastPromDate: req.body.lastPromDate,
-        duePromDate: req.body.duePromDate,
-        retireByAge: req.body.retireByAge,
-        retireByService: req.body.retireByService,
-        qualification: req.body.qualification,
-        department: req.body.department,
-        currentRank: req.body.currentRank,
-        currentGradeLevel: req.body.currentGradeLevel,
-        hasFirstApptLetter: req.body.hasFirstApptLetter,
-        hasConfirmationLetter: req.body.hasConfirmationLetter,
-        hasLastPromLetter: req.body.hasLastPromLetter,
-        hasProfessionalCert: req.body.hasProfessionalCert,
-        hasFSLC: req.body.hasFSLC,
-        hasSSCE: req.body.hasSSCE,
-        hasNCE: req.body.hasNCE,
-        hasOND: req.body.hasOND,
-        hasHND: req.body.hasHND,
-        hasBL: req.body.hasBL,
-        hasLLB: req.body.hasLLB,
-        hasLLD: req.body.hasLLD,
-        hasLLM: req.body.hasLLM,
-        hasNabteb: req.body.hasNabteb,
-        hasNabtebAdvanced: req.body.hasNabtebAdvanced,
-        hasJchew: req.body.hasJchew,
-        hasChew: req.body.hasChew,
-        hasFirstDegree: req.body.hasFirstDegree,
-        hasNYSCORExemptionLetter: req.body.hasNYSCORExemptionLetter,
-        hasMasters: req.body.hasMasters,
-        hasPhD: req.body.hasPhD,
-        hasNYSCORExemptionLetter: req.body.hasNYSCORExemptionLetter,
-        hasAgeDeclarationORBirthCert: req.body.hasAgeDeclarationORBirthCert,
-        hasLGACert: req.body.hasLGACert,
-        hasChangeOfName: req.body.hasChangeofName,
-        hasPGD: req.body.hasPGD,
-        hasTradeTestOne: req.body.hasTradeTestOne,
-        hasTradeTestTwo: req.body.hasTradeTestTwo,
-        hasTradeTestThree: req.body.hasTradeTestThree,
-        hasAnyOtherCert: req.body.hasAnyOtherCert,
-        hasCertificate: req.body.hasCertificate,
+      if (!servant) {
+        return next(new ErrorResponse("Civil servant not found", 404));
+      }
+
+      Object.assign(servant, buildServantPayload(req.body));
+
+      // Generate Applicant ID here
+      const serviceAreaCode = servant.serviceArea.substring(0, 3).toUpperCase();
+      const serviceRegionCode = servant.serviceRegion.toUpperCase();
+
+      const servantCount = await Servant.countDocuments({
+        serviceArea: servant.serviceArea,
       });
 
-      res.status(201).json({
+      servant.applicantID = `BY/LGSC/${serviceRegionCode}/${serviceAreaCode}/${(
+        servantCount + 1
+      )
+        .toString()
+        .padStart(3, "0")}`;
+
+      servant.currentStep = 1;
+
+      await servant.save();
+
+      res.json({
         success: true,
-        data: {
-          servant,
-        },
+        message: "Personal information added successfully",
+        data: servant,
       });
     } else {
       return next(
-        new ErrorResponse("You are not assigned to this region", 403)
+        new ErrorResponse("You are not assigned to this region", 403),
       );
     }
   }
 });
+
+// @DESC        Upload Civil Servant Biometric Photo
+// @ROUTE       PATCH  /api/v1/civil-servants/:id/photo
+// @ACCESS      Private
+exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
+  const { role, assignedRDAs, assignedLGAs } = req.user;
+
+  const servant = await Servant.findById(req.params.id);
+
+  if (!servant) {
+    return next(new ErrorResponse("Servant not found", 404));
+  }
+
+  const { serviceArea, serviceRegion } = servant;
+
+  if (role === "superadmin") {
+    const uploader = async (path) =>
+      await cloudinary.uploads(path, "civil-servants");
+
+    const newPath = await uploader(req.file.path);
+
+    fs.unlinkSync(req.file.path);
+    servant.displayPhoto = newPath.url;
+    servant.currentStep = 2;
+
+    await servant.save();
+
+    res.json({
+      success: true,
+      message: "Biometric photo added successfully",
+      data: servant,
+    });
+  }
+
+  if (role === "admin") {
+    // Map assigned LGA/RDA values to their keys
+    const assignedLGAKeys = assignedLGAs
+      .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
+      .filter(Boolean);
+    const assignedRDAKeys = assignedRDAs
+      .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
+      .filter(Boolean);
+
+    // Check if serviceArea is a valid key in LGAs or RDAs
+    const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
+    const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
+
+    if (
+      (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
+      (isRDAKey && assignedRDAKeys.includes(serviceArea))
+    ) {
+      const uploader = async (path) =>
+        await cloudinary.uploads(path, "civil-servants");
+
+      const newPath = await uploader(req.file.path);
+
+      fs.unlinkSync(req.file.path);
+      servant.displayPhoto = newPath.url;
+      servant.currentStep = 2;
+
+      await servant.save();
+
+      res.json({
+        success: true,
+        message: "Biometric photo added successfully",
+        data: servant,
+      });
+    } else {
+      return next(
+        new ErrorResponse("You are not assigned to this region", 403),
+      );
+    }
+  }
+});
+
+// @DESC        Select Civil Servant Documents for upload
+// @ROUTE       PATCH  /api/v1/civil-servants/:id/document-selection
+// @ACCESS      Private
+exports.saveSelectedDocuments = asyncHandler(async (req, res) => {
+  const { role, assignedRDAs, assignedLGAs } = req.user;
+
+  const servant = await Servant.findById(req.params.id);
+
+  if (!servant) {
+    return next(new ErrorResponse("Servant not found", 404));
+  }
+
+  const { serviceArea, serviceRegion } = servant;
+
+  if (role === "superadmin") {
+    servant.documentsSelected = Object.values(req.body).some((v) => v === true);
+
+    Object.assign(servant, req.body);
+
+    servant.currentStep = 3;
+
+    await servant.save();
+
+    res.json({
+      success: true,
+      message: "Documents for upload selected successfully",
+      data: servant,
+    });
+  }
+
+  if (role === "admin") {
+    // Map assigned LGA/RDA values to their keys
+    const assignedLGAKeys = assignedLGAs
+      .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
+      .filter(Boolean);
+    const assignedRDAKeys = assignedRDAs
+      .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
+      .filter(Boolean);
+
+    // Check if serviceArea is a valid key in LGAs or RDAs
+    const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
+    const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
+
+    if (
+      (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
+      (isRDAKey && assignedRDAKeys.includes(serviceArea))
+    ) {
+      servant.documentsSelected = Object.values(req.body).some(
+        (v) => v === true,
+      );
+
+      Object.assign(servant, req.body);
+
+      servant.currentStep = 3;
+
+      await servant.save();
+
+      res.json({
+        success: true,
+        message: "Documents for upload selected successfully",
+        data: servant,
+      });
+    } else {
+      return next(
+        new ErrorResponse("You are not assigned to this region", 403),
+      );
+    }
+  }
+});
+
+// @DESC        Submit Civil Servant Application
+// @ROUTE       PATCH  /api/v1/civil-servants/:id/submit
+// @ACCESS      Private
+exports.submitCivilServant = asyncHandler(async (req, res, next) => {
+  const { role, assignedRDAs, assignedLGAs } = req.user;
+
+  const servant = await Servant.findById(req.params.id);
+
+  if (!servant) {
+    return next(new ErrorResponse("Servant not found", 404));
+  }
+
+  const { serviceArea, serviceRegion } = servant;
+
+  if (role === "superadmin") {
+    servant.currentStep = 4;
+
+    await servant.save();
+
+    res.json({
+      success: true,
+      status: servant.formStatus,
+      progress: servant.progress,
+      message: "Civil Servant record completed",
+      servant,
+    });
+  }
+
+  if (role === "admin") {
+    // Map assigned LGA/RDA values to their keys
+    const assignedLGAKeys = assignedLGAs
+      .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
+      .filter(Boolean);
+    const assignedRDAKeys = assignedRDAs
+      .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
+      .filter(Boolean);
+
+    // Check if serviceArea is a valid key in LGAs or RDAs
+    const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
+    const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
+
+    if (
+      (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
+      (isRDAKey && assignedRDAKeys.includes(serviceArea))
+    ) {
+      servant.currentStep = 4;
+
+      await servant.save();
+
+      res.json({
+        success: true,
+        status: servant.formStatus,
+        progress: servant.progress,
+        message: "Civil Servant record completed",
+        servant,
+      });
+    } else {
+      return next(
+        new ErrorResponse("You are not assigned to this region", 403),
+      );
+    }
+  }
+});
+
+// @DESC        Add Civil Servant
+// @ROUTE       POST  /api/v1/civil-servants/
+// @ACCESS      Private
+// exports.addCivilServant = asyncHandler(async (req, res, next) => {
+//   const uploader = async (path) =>
+//     await cloudinary.uploads(path, "civil-servants");
+
+//   const { path } = req.file;
+//   const newPath = await uploader(path);
+//   fs.unlinkSync(path);
+
+//   const { serviceArea, serviceRegion } = req.body;
+//   const { role, assignedRDAs, assignedLGAs } = req.user;
+
+//   // console.log(req.body);
+
+//   const normalized = normalizeServiceArea(serviceRegion, serviceArea);
+
+//   if (!normalized)
+//     return res.status(400).json({ error: "Invalid serviceArea provided" });
+
+//   const booleanFields = [
+//     "hasFirstApptLetter",
+//     "hasConfirmationLetter",
+//     "hasLastPromLetter",
+//     "hasProfessionalCert",
+//     "hasFSLC",
+//     "hasNCE",
+//     "hasOND",
+//     "hasHND",
+//     "hasBL",
+//     "hasLLB",
+//     "hasLLD",
+//     "hasLLM",
+//     "hasNabteb",
+//     "hasNabtebAdvanced",
+//     "hasJchew",
+//     "hasChew",
+//     "hasNYSCORExemptionLetter",
+//     "hasSSCE",
+//     "hasFirstDegree",
+//     "hasAgeDeclarationORBirthCert",
+//     "hasLGACert",
+//     "hasChangeOfName",
+//     "hasAnyOtherCert",
+//     "hasPGD",
+//     "hasMasters",
+//     "hasPhD",
+//     "hasTradeTestOne",
+//     "hasTradeTestTwo",
+//     "hasTradeTestThree",
+//     "hasCertificate",
+//   ];
+
+//   if (role === "superadmin") {
+//     parseBooleanFields(req.body, booleanFields);
+
+//     const servant = await Servant.create({
+//       serviceRegion: req.body.serviceRegion,
+//       serviceArea: normalized.value,
+//       displayPhoto: newPath.url,
+//       firstName: req.body.firstName,
+//       middleName: req.body.middleName,
+//       lastName: req.body.lastName,
+//       sex: req.body.sex,
+//       phone: req.body.phone,
+//       dateOfBirth: req.body.dateOfBirth,
+//       originLGA: req.body.originLGA,
+//       firstApptDate: req.body.firstApptDate,
+//       lastPromDate: req.body.lastPromDate,
+//       duePromDate: req.body.duePromDate,
+//       retireByAge: req.body.retireByAge,
+//       retireByService: req.body.retireByService,
+//       qualification: req.body.qualification,
+//       department: req.body.department,
+//       currentRank: req.body.currentRank,
+//       currentGradeLevel: req.body.currentGradeLevel,
+//       hasFirstApptLetter: req.body.hasFirstApptLetter,
+//       hasConfirmationLetter: req.body.hasConfirmationLetter,
+//       hasLastPromLetter: req.body.hasLastPromLetter,
+//       hasProfessionalCert: req.body.hasProfessionalCert,
+//       hasFSLC: req.body.hasFSLC,
+//       hasSSCE: req.body.hasSSCE,
+//       hasNCE: req.body.hasNCE,
+//       hasOND: req.body.hasOND,
+//       hasHND: req.body.hasHND,
+//       hasBL: req.body.hasBL,
+//       hasLLB: req.body.hasLLB,
+//       hasLLD: req.body.hasLLD,
+//       hasLLM: req.body.hasLLM,
+//       hasNabteb: req.body.hasNabteb,
+//       hasNabtebAdvanced: req.body.hasNabtebAdvanced,
+//       hasJchew: req.body.hasJchew,
+//       hasChew: req.body.hasChew,
+//       hasFirstDegree: req.body.hasFirstDegree,
+//       hasNYSCORExemptionLetter: req.body.hasNYSCORExemptionLetter,
+//       hasMasters: req.body.hasMasters,
+//       hasPhD: req.body.hasPhD,
+//       hasNYSCORExemptionLetter: req.body.hasNYSCORExemptionLetter,
+//       hasAgeDeclarationORBirthCert: req.body.hasAgeDeclarationORBirthCert,
+//       hasLGACert: req.body.hasLGACert,
+//       hasChangeOfName: req.body.hasChangeofName,
+//       hasPGD: req.body.hasPGD,
+//       hasTradeTestOne: req.body.hasTradeTestOne,
+//       hasTradeTestTwo: req.body.hasTradeTestTwo,
+//       hasTradeTestThree: req.body.hasTradeTestThree,
+//       hasAnyOtherCert: req.body.hasAnyOtherCert,
+//       hasCertificate: req.body.hasCertificate,
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       data: {
+//         servant,
+//       },
+//     });
+//   }
+
+//   if (role === "admin") {
+//     // Map assigned LGA/RDA values to their keys
+//     const assignedLGAKeys = assignedLGAs
+//       .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
+//       .filter(Boolean);
+//     const assignedRDAKeys = assignedRDAs
+//       .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
+//       .filter(Boolean);
+
+//     // Check if serviceArea is a valid key in LGAs or RDAs
+//     const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
+//     const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
+
+//     if (
+//       (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
+//       (isRDAKey && assignedRDAKeys.includes(serviceArea))
+//     ) {
+//       parseBooleanFields(req.body, booleanFields);
+
+//       const servant = await Servant.create({
+//         serviceRegion: req.body.serviceRegion,
+//         serviceArea: normalized.value,
+//         displayPhoto: newPath.url,
+//         firstName: req.body.firstName,
+//         middleName: req.body.middleName,
+//         lastName: req.body.lastName,
+//         sex: req.body.sex,
+//         phone: req.body.phone, // Added phone field
+//         dateOfBirth: req.body.dateOfBirth,
+//         originLGA: req.body.originLGA,
+//         firstApptDate: req.body.firstApptDate,
+//         lastPromDate: req.body.lastPromDate,
+//         duePromDate: req.body.duePromDate,
+//         retireByAge: req.body.retireByAge,
+//         retireByService: req.body.retireByService,
+//         qualification: req.body.qualification,
+//         department: req.body.department,
+//         currentRank: req.body.currentRank,
+//         currentGradeLevel: req.body.currentGradeLevel,
+//         hasFirstApptLetter: req.body.hasFirstApptLetter,
+//         hasConfirmationLetter: req.body.hasConfirmationLetter,
+//         hasLastPromLetter: req.body.hasLastPromLetter,
+//         hasProfessionalCert: req.body.hasProfessionalCert,
+//         hasFSLC: req.body.hasFSLC,
+//         hasSSCE: req.body.hasSSCE,
+//         hasNCE: req.body.hasNCE,
+//         hasOND: req.body.hasOND,
+//         hasHND: req.body.hasHND,
+//         hasBL: req.body.hasBL,
+//         hasLLB: req.body.hasLLB,
+//         hasLLD: req.body.hasLLD,
+//         hasLLM: req.body.hasLLM,
+//         hasNabteb: req.body.hasNabteb,
+//         hasNabtebAdvanced: req.body.hasNabtebAdvanced,
+//         hasJchew: req.body.hasJchew,
+//         hasChew: req.body.hasChew,
+//         hasFirstDegree: req.body.hasFirstDegree,
+//         hasNYSCORExemptionLetter: req.body.hasNYSCORExemptionLetter,
+//         hasMasters: req.body.hasMasters,
+//         hasPhD: req.body.hasPhD,
+//         hasNYSCORExemptionLetter: req.body.hasNYSCORExemptionLetter,
+//         hasAgeDeclarationORBirthCert: req.body.hasAgeDeclarationORBirthCert,
+//         hasLGACert: req.body.hasLGACert,
+//         hasChangeOfName: req.body.hasChangeofName,
+//         hasPGD: req.body.hasPGD,
+//         hasTradeTestOne: req.body.hasTradeTestOne,
+//         hasTradeTestTwo: req.body.hasTradeTestTwo,
+//         hasTradeTestThree: req.body.hasTradeTestThree,
+//         hasAnyOtherCert: req.body.hasAnyOtherCert,
+//         hasCertificate: req.body.hasCertificate,
+//       });
+
+//       res.status(201).json({
+//         success: true,
+//         data: {
+//           servant,
+//         },
+//       });
+//     } else {
+//       return next(
+//         new ErrorResponse("You are not assigned to this region", 403),
+//       );
+//     }
+//   }
+// });
 
 // @DESC        Get Civil Servant by advanced filtering
 // @ROUTE       POST  /api/v1/civil-servants/
@@ -262,7 +582,7 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
         });
       } else {
         return next(
-          new ErrorResponse("You are not assigned to this region", 403)
+          new ErrorResponse("You are not assigned to this region", 403),
         );
       }
     }
@@ -286,12 +606,12 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
 
       // Filter results based on service area access
       const authorizedServants = results.filter((servant) =>
-        allowedAreaValues.includes(servant.serviceArea?.toLowerCase())
+        allowedAreaValues.includes(servant.serviceArea?.toLowerCase()),
       );
 
       if (authorizedServants.length === 0) {
         return next(
-          new ErrorResponse("You are not assigned to this region", 403)
+          new ErrorResponse("You are not assigned to this region", 403),
         );
       }
 
@@ -322,12 +642,12 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
 
       // Usually applicantID returns a single servant, but we still use array to keep it consistent
       const authorizedServants = results.filter((servant) =>
-        allowedAreaValues.includes(servant.serviceArea?.toLowerCase())
+        allowedAreaValues.includes(servant.serviceArea?.toLowerCase()),
       );
 
       if (authorizedServants.length === 0) {
         return next(
-          new ErrorResponse("You are not assigned to this region", 403)
+          new ErrorResponse("You are not assigned to this region", 403),
         );
       }
 
@@ -372,7 +692,7 @@ exports.getCivilServant = asyncHandler(async (req, res, next) => {
       });
     } else {
       return next(
-        new ErrorResponse("You are not assigned to this region", 403)
+        new ErrorResponse("You are not assigned to this region", 403),
       );
     }
   }
@@ -393,7 +713,7 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
       {
         $set: req.body,
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     res.status(200).json({
@@ -428,7 +748,7 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
     // Step 3: Check if servant's serviceArea is in admin's assigned areas
     if (!allowedAreaValues.includes(servantArea)) {
       return next(
-        new ErrorResponse("You are not assigned to this region", 403)
+        new ErrorResponse("You are not assigned to this region", 403),
       );
     }
 
@@ -441,7 +761,7 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     return res.status(200).json({
@@ -450,9 +770,6 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
     });
   }
 });
-
-
-// ...existing code...
 
 // @DESC        Delete Civil Servant
 // @ROUTE       DELETE  /api/v1/civil-servants/:id
@@ -475,7 +792,8 @@ exports.deleteCivilServant = asyncHandler(async (req, res, next) => {
 
   if (role === "admin") {
     const servant = await Servant.findById(servantId);
-    if (!servant) return next(new ErrorResponse("Civil servant not found", 404));
+    if (!servant)
+      return next(new ErrorResponse("Civil servant not found", 404));
 
     // Combine RDAs and LGAs to match codes to actual area names
     const combinedServiceAreas = { ...RDAs, ...LGAs };
@@ -489,7 +807,9 @@ exports.deleteCivilServant = asyncHandler(async (req, res, next) => {
 
     // Check if servant's serviceArea is in admin's assigned areas
     if (!allowedAreaValues.includes(servantArea)) {
-      return next(new ErrorResponse("You are not assigned to this region", 403));
+      return next(
+        new ErrorResponse("You are not assigned to this region", 403),
+      );
     }
 
     await Servant.findByIdAndDelete(servantId);
@@ -502,15 +822,15 @@ exports.deleteCivilServant = asyncHandler(async (req, res, next) => {
 });
 
 // @DESC        Upload Certificates for Civil Servant
-// @ROUTE       POST  /api/v1/civil-servants/:id/certificates
+// @ROUTE       PATCH  /api/v1/civil-servants/:id/certificates
 // @ACCESS      Private
 exports.uploadCerts = asyncHandler(async (req, res, next) => {
   const { role, assignedRDAs, assignedLGAs } = req.user;
 
-  if (role === "superadmin") {
-    let servant = await Servant.findById(req.params.servantId);
-    if (!servant) return next(new ErrorResponse("Data not found!", 404));
+  let servant = await Servant.findById(req.params.id);
+  if (!servant) return next(new ErrorResponse("Civil servant not found!", 404));
 
+  if (role === "superadmin") {
     // const userId = req.params.userId;
     const files = req.files;
     const docNames = req.body.names;
@@ -543,7 +863,7 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
     servant = await Servant.findByIdAndUpdate(
       servant,
       { $set: { certificates: { $each: uploadedDocs } } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
     // servant = await Servant.findByIdAndUpdate(
     //   req.params.servantId,
@@ -562,14 +882,6 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
   }
 
   if (role === "admin") {
-    const servantId = req.params.servantId;
-
-    // Step 1: Fetch the servant by ID
-    let servant = await Servant.findById(servantId);
-    if (!servant) {
-      return next(new ErrorResponse("Civil servant not found", 404));
-    }
-
     // Step 2: Combine RDAs and LGAs to match codes to actual area names
     const combinedServiceAreas = {
       ...RDAs,
@@ -587,7 +899,7 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
     // Step 3: Check if servant's serviceArea is in admin's assigned areas
     if (!allowedAreaValues.includes(servantArea)) {
       return next(
-        new ErrorResponse("You are not assigned to this region", 403)
+        new ErrorResponse("You are not assigned to this region", 403),
       );
     }
 
@@ -623,7 +935,7 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
     servant = await Servant.findByIdAndUpdate(
       servant,
       { $set: { certificates: { $each: uploadedDocs } } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     res.status(200).json({

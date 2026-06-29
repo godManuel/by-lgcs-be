@@ -10,31 +10,25 @@ const servantSchema = new mongoose.Schema(
     serviceRegion: {
       type: String,
       enum: ["RDA", "LGA"],
-      required: true,
     },
     serviceArea: {
       type: String,
       // enum: { values: validServiceAreas, message: "Invalid Service Area" },
-      required: true,
     },
-    displayPhoto: { type: String, required: true },
+    displayPhoto: { type: String, default: null },
     firstName: {
       type: String,
-      required: true,
     },
     lastName: {
       type: String,
-      required: true,
     },
     middleName: String,
     sex: {
       type: String,
       enum: ["male", "female"],
-      required: true,
     },
     dateOfBirth: {
       type: Date,
-      required: true,
     },
     age: {
       type: Number,
@@ -54,15 +48,12 @@ const servantSchema = new mongoose.Schema(
         "Brass",
         "Sagbama",
       ],
-      required: true,
     },
     firstApptDate: {
       type: Date,
-      required: true,
     },
     lastPromDate: {
       type: Date,
-      required: true,
     },
     duePromDate: {
       type: Date,
@@ -107,7 +98,6 @@ const servantSchema = new mongoose.Schema(
         "llm",
         "certificate",
       ],
-      required: true,
     },
     department: {
       type: String,
@@ -120,15 +110,12 @@ const servantSchema = new mongoose.Schema(
         "treasury",
         "agric",
       ],
-      required: true,
     },
     currentRank: {
       type: String,
-      required: true,
     },
     currentGradeLevel: {
       type: String,
-      required: true,
     },
     applicantID: String,
     hasFirstApptLetter: {
@@ -252,13 +239,71 @@ const servantSchema = new mongoose.Schema(
       default: false,
     },
     certificates: [certificateSchema],
+
+    formStatus: {
+      type: String,
+      enum: ["draft", "completed"],
+      default: "draft",
+      index: true,
+    },
+
+    currentStep: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 4,
+    },
+
+    completedSteps: {
+      type: [Number],
+      default: [],
+    },
+
+    completionPercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+
+    lastSavedStep: {
+      type: Number,
+      default: 1,
+    },
+
+    documentsSelected: {
+      type: Boolean,
+      default: false,
+    },
+
+    submittedAt: Date,
+
+    admin: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    isComplete: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+    },
+
+    toObject: {
+      virtuals: true,
+    },
+  },
 );
 
 // Automatically populating the age field by the date-of-birth field
 servantSchema.pre("save", async function (next) {
   if (this.dateOfBirth) {
+    /** Calculate Age */
     const today = new Date();
     const birthDate = new Date(this.dateOfBirth);
 
@@ -273,21 +318,66 @@ servantSchema.pre("save", async function (next) {
     this.age = age; // Automatically store the calculated age
   }
 
-  if (this.isNew || this.isModified("serviceArea")) {
-    const serviceAreaCode = this.serviceArea.substring(0, 3).toUpperCase();
-    const serviceRegionCode = this.serviceRegion.toUpperCase();
+  /** Automatically track progress */
 
-    const servantCount = await mongoose
-      .model("Servant")
-      .countDocuments({ serviceArea: this.serviceArea });
-
-    this.applicantID = `BY/LGSC/${serviceRegionCode}/${serviceAreaCode}/${(
-      servantCount + 1
-    )
-      .toString()
-      .padStart(3, "0")}`;
+  // Ensure completedSteps is always an array
+  if (!Array.isArray(this.completedSteps)) {
+    this.completedSteps = [];
   }
+
+  // Add current step if not already completed
+  if (this.currentStep && !this.completedSteps.includes(this.currentStep)) {
+    this.completedSteps.push(this.currentStep);
+  }
+
+  // Remove duplicates and sort
+  this.completedSteps = [...new Set(this.completedSteps)].sort((a, b) => a - b);
+
+  // Save last step reached
+  this.lastSavedStep = this.currentStep;
+
+  // Calculate completion percentage
+  const TOTAL_STEPS = 4;
+
+  this.completionPercentage = Math.round(
+    (this.completedSteps.length / TOTAL_STEPS) * 100,
+  );
+
+  const hasUploadedDocuments =
+    Array.isArray(this.certificates) && this.certificates.length > 0;
+
+  /**
+   * =================================
+   * COMPLETION
+   * =================================
+   */
+
+  if (
+    this.currentStep === 4 &&
+    this.displayPhoto &&
+    (!this.documentsSelected || hasUploadedDocuments)
+  ) {
+    this.formStatus = "completed";
+    this.isComplete = true;
+    if (!this.submittedAt) {
+      this.submittedAt = new Date();
+    }
+  } else {
+    this.formStatus = "draft";
+    this.isComplete = false;
+  }
+
   next();
+});
+
+servantSchema.virtual("progress").get(function () {
+  return {
+    step: this.currentStep,
+    completedSteps: this.completedSteps,
+    percentage: this.completionPercentage,
+    status: this.formStatus,
+    completed: this.isComplete,
+  };
 });
 
 // servantSchema.pre("validate", function (next) {

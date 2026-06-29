@@ -4,7 +4,11 @@ const router = express.Router();
 const upload = require("../utils/multer");
 
 const {
-  addCivilServant,
+  createCivilServantDraft,
+  updatePersonalInformation,
+  uploadBiometricPhoto,
+  saveSelectedDocuments,
+  submitCivilServant,
   getCivilServant,
   getCivilServants,
   updateCivilServant,
@@ -132,14 +136,43 @@ const Servant = require("../models/Servant");
  *      500:
  *        description: Some server error
  */
-router
-  .route("/")
-  .post(
-    protect,
-    authorize("superadmin", "admin"),
-    upload.single("displayPhoto"),
-    addCivilServant
-  );
+// router
+//   .route("/")
+//   .post(
+//     protect,
+//     authorize("superadmin", "admin"),
+//     upload.single("displayPhoto"),
+//     addCivilServant,
+//   );
+
+router.post(
+  "/",
+  protect,
+  authorize("superadmin", "admin"),
+  createCivilServantDraft,
+);
+
+router.patch(
+  "/:id/personal",
+  protect,
+  authorize("superadmin", "admin"),
+  updatePersonalInformation,
+);
+
+router.patch(
+  "/:id/photo",
+  protect,
+  authorize("superadmin", "admin"),
+  upload.single("displayPhoto"),
+  uploadBiometricPhoto,
+);
+
+router.patch(
+  "/:id/document-selection",
+  protect,
+  authorize("superadmin", "admin"),
+  saveSelectedDocuments,
+);
 
 /**
  * @swagger
@@ -163,8 +196,24 @@ router
     protect,
     authorize("superadmin", "admin"),
     advancedResults(Servant),
-    getCivilServants
+    getCivilServants,
   );
+
+router
+  .route("/:id/certificates")
+  .put(
+    protect,
+    authorize("superadmin", "admin"),
+    upload.array("certificates"),
+    uploadCerts,
+  );
+
+router.patch(
+  "/:id/submit",
+  protect,
+  authorize("superadmin", "admin"),
+  submitCivilServant,
+);
 
 // @GET - Fetch a single Civil Servant
 router
@@ -209,14 +258,5 @@ router
 router
   .route("/:servantId")
   .delete(protect, authorize("superadmin", "admin"), deleteCivilServant);
-
-router
-  .route("/:servantId/certificates")
-  .put(
-    protect,
-    authorize("superadmin", "admin"),
-    upload.array("certificates"),
-    uploadCerts
-  );
 
 module.exports = router;

@@ -30,7 +30,7 @@ exports.RDAs = {
   "gbarain-ekpetiama": "Gbarain-Ekpetiama (YELGA)",
   "okordia-zarama-biseni": "Okordia Zarama Biseni (YELGA)",
   yenagoa: "Yenagoa (YELGA)",
-  "southern-ijaw" : "Southern-Ijaw (SILGA)"
+  "southern-ijaw": "Southern-Ijaw (SILGA)",
 };
 
 exports.LGAs = {
@@ -41,5 +41,5 @@ exports.LGAs = {
   "kolokuma/opokuma": "Kolokuma/Opokuma",
   nembe: "Nembe",
   ogbia: "Ogbia",
-  sagbama: "Sagbama"
+  sagbama: "Sagbama",
 };

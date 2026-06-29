@@ -1,5 +1,6 @@
 const { RDAs, LGAs } = require("../config/serviceAreas.js");
 const Servant = require("../models/Servant.js");
+const User = require("../models/User.js");
 const asyncHandler = require("../middlewares/async.js");
 const ErrorResponse = require("../utils/errorResponse.js");
 const cloudinary = require("../utils/cloudinary.js");

@@ -13,7 +13,7 @@ exports.login = asyncHandler(async (req, res, next) => {
   }
 
   const user = await User.findOne({ email: req.body.email }).select(
-    "+password"
+    "+password",
   );
   if (!user) return next(new ErrorResponse("Email or password incorrect", 401));
 
@@ -34,7 +34,7 @@ exports.login = asyncHandler(async (req, res, next) => {
         name: user.firstName,
         expiryTime: user.emailOTPExpire,
         otp: emailOTP,
-      }
+      },
     );
 
     res.status(200).json({
@@ -81,7 +81,7 @@ exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
   switch (true) {
     case resolvedLGAs.length > 0 && resolvedRDAs.length > 0:
       message = `You are assigned to LGAs: ${resolvedLGAs.join(
-        ", "
+        ", ",
       )} and RDAs: ${resolvedRDAs.join(", ")}`;
       break;
 
@@ -102,6 +102,9 @@ exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
     data: {
       email: user.email,
       role: user.role,
+      name: user.firstName + " " + user.lastName,
+      assignedLGAs: resolvedLGAs.length > 0 ? user.assignedLGAs : null,
+      assignedRDAs: resolvedRDAs.length > 0 ? user.assignedRDAs : null,
       message,
       token,
     },

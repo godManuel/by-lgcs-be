@@ -26,17 +26,24 @@ const advancedResults = (model, populate) => async (req, res, next) => {
     const parts = rawName.split("-").filter(Boolean); // remove empty strings
 
     if (parts.length === 2) {
-      // Full name search (first + last name)
-      const fullNameRegex = `${parts[0]} ${parts[1]}`; // e.g., john doe
+      const [name1, name2] = parts;
+
       aggregatePipeline.push({
         $match: {
-          $expr: {
-            $regexMatch: {
-              input: { $concat: ["$firstName", " ", "$lastName"] },
-              regex: fullNameRegex,
-              options: "i",
+          $or: [
+            {
+              $and: [
+                { firstName: { $regex: `^${name1}$`, $options: "i" } },
+                { lastName: { $regex: `^${name2}$`, $options: "i" } },
+              ],
             },
-          },
+            {
+              $and: [
+                { firstName: { $regex: `^${name2}$`, $options: "i" } },
+                { lastName: { $regex: `^${name1}$`, $options: "i" } },
+              ],
+            },
+          ],
         },
       });
     } else {
@@ -56,7 +63,7 @@ const advancedResults = (model, populate) => async (req, res, next) => {
     let queryStr = JSON.stringify(reqQuery);
     queryStr = queryStr.replace(
       /\b(gt|gte|lt|lte|in)\b/g,
-      (match) => `$${match}`
+      (match) => `$${match}`,
     );
     query = model.find(JSON.parse(queryStr));
   }

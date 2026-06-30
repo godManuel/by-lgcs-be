@@ -7,81 +7,51 @@ const cloudinary = require("../utils/cloudinary.js");
 const fs = require("fs");
 const { getRetirementStatus } = require("../utils/retireStatus.js");
 const buildServantPayload = require("../utils/buildServantPayload.js");
+const { createDraft } = require("../utils/createFormDraft.js");
 
 // @DESC        Create Civil Servant Draft
 // @ROUTE       POST  /api/v1/civil-servants/
 // @ACCESS      Private
-exports.createCivilServantDraft = asyncHandler(async (req, res) => {
-  const servant = await Servant.create({
-    currentStep: 1,
-    formStatus: "draft",
-    admin: req.user.id,
-  });
+// exports.createCivilServantDraft = asyncHandler(async (req, res) => {
+//   const servant = await Servant.create({
+//     currentStep: 1,
+//     formStatus: "draft",
+//     admin: req.user.id,
+//   });
 
-  await User.findByIdAndUpdate(req.user._id, {
-    $inc: {
-      "statistics.totalServants": 1,
-      "statistics.totalDrafts": 1,
-    },
-  });
+//   await User.findByIdAndUpdate(req.user._id, {
+//     $inc: {
+//       "statistics.totalServants": 1,
+//       "statistics.totalDrafts": 1,
+//     },
+//   });
 
-  res.status(201).json({
-    success: true,
-    data: servant,
-  });
-});
+//   res.status(201).json({
+//     success: true,
+//     data: servant,
+//   });
+// });
 
 // @DESC        Update Civil Servant Personal Information
-// @ROUTE       PATCH  /api/v1/civil-servants/:id/personal
+// @ROUTE       PATCH  /api/v1/civil-servants/
 // @ACCESS      Private
-exports.updatePersonalInformation = asyncHandler(async (req, res, next) => {
-  const { serviceArea, serviceRegion } = req.body;
+exports.addPersonalInformation = asyncHandler(async (req, res, next) => {
+  const { serviceArea } = req.body;
   const { role, assignedRDAs, assignedLGAs } = req.user;
 
   if (role === "superadmin") {
-    const servant = await Servant.findById(req.params.id);
-
-    if (!servant) {
-      return next(new ErrorResponse("Civil servant not found", 404));
-    }
-
-    Object.assign(servant, buildServantPayload(req.body));
-
-    // Generate Applicant ID here
-    const serviceAreaCode = servant.serviceArea.substring(0, 3).toUpperCase();
-    const serviceRegionCode = servant.serviceRegion.toUpperCase();
-
-    const servantCount = await Servant.countDocuments({
-      serviceArea: servant.serviceArea,
-    });
-
-    servant.applicantID = `BY/LGSC/${serviceRegionCode}/${serviceAreaCode}/${(
-      servantCount + 1
-    )
-      .toString()
-      .padStart(3, "0")}`;
-
-    servant.currentStep = 1;
-
-    await servant.save();
-
-    res.json({
-      success: true,
-      message: "Personal information added successfully",
-      data: servant,
-    });
+    return createDraft(req, res, next);
   }
 
   if (role === "admin") {
-    // Map assigned LGA/RDA values to their keys
     const assignedLGAKeys = assignedLGAs
       .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
       .filter(Boolean);
+
     const assignedRDAKeys = assignedRDAs
       .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
       .filter(Boolean);
 
-    // Check if serviceArea is a valid key in LGAs or RDAs
     const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
     const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
 
@@ -89,42 +59,10 @@ exports.updatePersonalInformation = asyncHandler(async (req, res, next) => {
       (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
       (isRDAKey && assignedRDAKeys.includes(serviceArea))
     ) {
-      const servant = await Servant.findById(req.params.id);
-
-      if (!servant) {
-        return next(new ErrorResponse("Civil servant not found", 404));
-      }
-
-      Object.assign(servant, buildServantPayload(req.body));
-
-      // Generate Applicant ID here
-      const serviceAreaCode = servant.serviceArea.substring(0, 3).toUpperCase();
-      const serviceRegionCode = servant.serviceRegion.toUpperCase();
-
-      const servantCount = await Servant.countDocuments({
-        serviceArea: servant.serviceArea,
-      });
-
-      servant.applicantID = `BY/LGSC/${serviceRegionCode}/${serviceAreaCode}/${(
-        servantCount + 1
-      )
-        .toString()
-        .padStart(3, "0")}`;
-
-      servant.currentStep = 1;
-
-      await servant.save();
-
-      res.json({
-        success: true,
-        message: "Personal information added successfully",
-        data: servant,
-      });
-    } else {
-      return next(
-        new ErrorResponse("You are not assigned to this region", 403),
-      );
+      return createDraft(req, res, next);
     }
+
+    return next(new ErrorResponse("You are not assigned to this region", 403));
   }
 });
 

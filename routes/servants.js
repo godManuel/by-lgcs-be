@@ -4,8 +4,7 @@ const router = express.Router();
 const upload = require("../utils/multer");
 
 const {
-  createCivilServantDraft,
-  updatePersonalInformation,
+  addPersonalInformation,
   uploadBiometricPhoto,
   saveSelectedDocuments,
   submitCivilServant,
@@ -146,17 +145,10 @@ const Servant = require("../models/Servant");
 //   );
 
 router.post(
-  "/",
+  "/personal",
   protect,
   authorize("superadmin", "admin"),
-  createCivilServantDraft,
-);
-
-router.patch(
-  "/:id/personal",
-  protect,
-  authorize("superadmin", "admin"),
-  updatePersonalInformation,
+  addPersonalInformation,
 );
 
 router.patch(

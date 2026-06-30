@@ -140,7 +140,7 @@ exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse("Servant not found", 404));
   }
 
-  const { serviceArea, serviceRegion } = servant;
+  const { serviceArea, serviceRegion } = req.body;
 
   if (role === "superadmin") {
     const uploader = async (path) =>
@@ -214,7 +214,7 @@ exports.saveSelectedDocuments = asyncHandler(async (req, res) => {
     return next(new ErrorResponse("Servant not found", 404));
   }
 
-  const { serviceArea, serviceRegion } = servant;
+  const { serviceArea, serviceRegion } = req.body;
 
   if (role === "superadmin") {
     servant.documentsSelected = Object.values(req.body).some((v) => v === true);
@@ -284,7 +284,7 @@ exports.submitCivilServant = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse("Servant not found", 404));
   }
 
-  const { serviceArea, serviceRegion } = servant;
+  const { serviceArea, serviceRegion } = req.body;
 
   if (role === "superadmin") {
     servant.currentStep = 4;

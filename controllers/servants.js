@@ -570,58 +570,43 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
 
   if (role === "admin") {
     if (req.query.serviceArea) {
-      const assignedLGAKeys = assignedLGAs
-        .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
-        .filter(Boolean);
-      const assignedRDAKeys = assignedRDAs
-        .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
-        .filter(Boolean);
+      const normalize = (value = "") => value.toLowerCase().trim();
 
-      // Check if serviceArea is a valid key in LGAs or RDAs
-      const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
-      const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
+      const allowedAreas = [...assignedRDAs, ...assignedLGAs].map(normalize);
 
-      if (
-        (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
-        (isRDAKey && assignedRDAKeys.includes(serviceArea))
-      ) {
-        const { success, count, pagination, data } = res.advancedResults;
-
-        const transformedData = data.map(getRetirementStatus);
-
-        return res.status(200).json({
-          success,
-          count,
-          pagination,
-          data: transformedData,
-        });
-      } else {
+      if (!allowedAreas.includes(normalize(serviceArea))) {
         return next(
           new ErrorResponse("You are not assigned to this region", 403),
         );
       }
+
+      const { success, total, nbHits, pagination, data } = res.advancedResults;
+
+      const transformedData = data.map(getRetirementStatus);
+
+      return res.status(200).json({
+        success,
+        total,
+        nbHits,
+        pagination,
+        data: transformedData,
+      });
     }
 
     if (req.query.name) {
       // Combine all service area mappings
-      const combinedServiceAreas = {
-        ...RDAs,
-        ...LGAs,
-      };
-
-      // Get all assigned region codes and map them to their actual names
-      const assignedKeys = [...assignedRDAs, ...assignedLGAs];
-      const allowedAreaValues = assignedKeys
-        .map((key) => combinedServiceAreas[key])
-        .filter(Boolean)
-        .map((area) => area.toLowerCase()); // Normalize for comparison
+      const allowedAreaValues = [...assignedRDAs, ...assignedLGAs].map((area) =>
+        area.toLowerCase().trim(),
+      );
 
       // Get search results (e.g., from advancedResults middleware)
       const results = res.advancedResults?.data || [];
 
       // Filter results based on service area access
+      const normalize = (value = "") => value.toLowerCase().trim();
+
       const authorizedServants = results.filter((servant) =>
-        allowedAreaValues.includes(servant.serviceArea?.toLowerCase()),
+        allowedAreaValues.includes(normalize(servant.serviceArea)),
       );
 
       if (authorizedServants.length === 0) {
@@ -640,24 +625,18 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
 
     if (req.query.applicantID) {
       // Combine all service area mappings
-      const combinedServiceAreas = {
-        ...RDAs,
-        ...LGAs,
-      };
-
-      // Get all assigned region codes and map them to actual service area values
-      const assignedKeys = [...assignedRDAs, ...assignedLGAs];
-      const allowedAreaValues = assignedKeys
-        .map((key) => combinedServiceAreas[key])
-        .filter(Boolean)
-        .map((area) => area.toLowerCase()); // Normalize for comparison
+      const allowedAreaValues = [...assignedRDAs, ...assignedLGAs].map((area) =>
+        area.toLowerCase().trim(),
+      );
 
       // Get result from advancedResults middleware
       const results = res.advancedResults?.data || [];
 
       // Usually applicantID returns a single servant, but we still use array to keep it consistent
+      const normalize = (value = "") => value.toLowerCase().trim();
+
       const authorizedServants = results.filter((servant) =>
-        allowedAreaValues.includes(servant.serviceArea?.toLowerCase()),
+        allowedAreaValues.includes(normalize(servant.serviceArea)),
       );
 
       if (authorizedServants.length === 0) {
@@ -747,16 +726,9 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
     }
 
     // Step 2: Combine RDAs and LGAs to match codes to actual area names
-    const combinedServiceAreas = {
-      ...RDAs,
-      ...LGAs,
-    };
-
-    const assignedKeys = [...assignedRDAs, ...assignedLGAs];
-    const allowedAreaValues = assignedKeys
-      .map((key) => combinedServiceAreas[key])
-      .filter(Boolean)
-      .map((area) => area.toLowerCase());
+    const allowedAreaValues = [...assignedRDAs, ...assignedLGAs].map((area) =>
+      area.toLowerCase().trim(),
+    );
 
     const servantArea = servant.serviceArea?.toLowerCase();
 

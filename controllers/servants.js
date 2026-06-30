@@ -205,7 +205,7 @@ exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
 // @DESC        Select Civil Servant Documents for upload
 // @ROUTE       PATCH  /api/v1/civil-servants/:id/document-selection
 // @ACCESS      Private
-exports.saveSelectedDocuments = asyncHandler(async (req, res) => {
+exports.saveSelectedDocuments = asyncHandler(async (req, res, next) => {
   const { role, assignedRDAs, assignedLGAs } = req.user;
 
   const servant = await Servant.findById(req.params.id);

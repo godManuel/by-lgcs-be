@@ -15,6 +15,8 @@ exports.registerSuperAdmin = asyncHandler(async (req, res, next) => {
   if (user) return next(new ErrorResponse("User already exists", 400));
 
   user = await User.create({
+    firstName: req.body.firstName,
+    lastName: req.body.lastName,
     email: req.body.email,
     password: req.body.password,
     role: "superadmin",
@@ -26,84 +28,235 @@ exports.registerSuperAdmin = asyncHandler(async (req, res, next) => {
     data: {
       email: user.email,
       role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
     },
   });
 });
 
-// @DESC        Register Superadmin
+// @DESC        Register Admin
 // @ROUTE       POST  /api/v1/users/add-admin
 // @ACCESS      Private
+// exports.addAdmin = asyncHandler(async (req, res, next) => {
+//   const { email, assignedLGAs, assignedRDAs } = req.body;
+
+//   let user = await User.findOne({ email });
+//   if (user) return next(new ErrorResponse("User already exists", 400));
+
+//   let updateFields = {};
+
+//   if (assignedLGAs) {
+//     const invalidLGAs = assignedLGAs.filter((lgaKey) => !(lgaKey in LGAs));
+//     if (invalidLGAs.length > 0) {
+//       return next(
+//         new ErrorResponse(
+//           `Invalid assignedLGAs provided: ${invalidLGAs.join(", ")}`,
+//           400,
+//         ),
+//       );
+//     }
+//     updateFields.assignedLGAs = assignedLGAs.map((lgaKey) => LGAs[lgaKey]);
+//   }
+
+//   if (assignedRDAs) {
+//     const invalidRDAs = assignedRDAs.filter((rdaKey) => !(rdaKey in RDAs));
+//     if (invalidRDAs.length > 0) {
+//       return next(
+//         new ErrorResponse(
+//           `Invalid assignedRDAs provided: ${invalidRDAs.join(", ")}`,
+//           400,
+//         ),
+//       );
+//     }
+//     updateFields.assignedRDAs = assignedRDAs.map((rdaKey) => RDAs[rdaKey]);
+//   }
+
+//   if (Object.keys(updateFields).length === 0) {
+//     return next(
+//       new ErrorResponse(
+//         "Only assignedLGAs or assignedRDAs can be updated",
+//         400,
+//       ),
+//     );
+//   }
+
+//   user = await User.create({
+//     email: req.body.email,
+//     firstName: req.body.firstName,
+//     lastName: req.body.lastName,
+//     password: req.body.password,
+//     assignedLGAs: updateFields.assignedLGAs || [],
+//     assignedRDAs: updateFields.assignedRDAs || [],
+//   });
+
+//   await user.save();
+
+//   try {
+//     await sendEmail(user.email, "Invitation as Admin", "invite-admin", {
+//       name: user.firstName,
+//       email: user.email,
+//       password: req.body.password,
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         email: user.email,
+//         role: user.role,
+//         message: "A confirmation code has been sent to your email",
+//       },
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     return next(new ErrorResponse("Email could not be sent", 500));
+//   }
+// });
 exports.addAdmin = asyncHandler(async (req, res, next) => {
-  const { email, assignedLGAs, assignedRDAs } = req.body;
+  const { email, assignedLGA, firstName, lastName, password } = req.body;
 
   let user = await User.findOne({ email });
-  if (user) return next(new ErrorResponse("User already exists", 400));
 
-  let updateFields = {};
-
-  if (assignedLGAs) {
-    const invalidLGAs = assignedLGAs.filter((lgaKey) => !(lgaKey in LGAs));
-    if (invalidLGAs.length > 0) {
-      return next(
-        new ErrorResponse(
-          `Invalid assignedLGAs provided: ${invalidLGAs.join(", ")}`,
-          400,
-        ),
-      );
-    }
-    updateFields.assignedLGAs = assignedLGAs.map((lgaKey) => LGAs[lgaKey]);
+  if (user) {
+    return next(new ErrorResponse("User already exists", 400));
   }
 
-  if (assignedRDAs) {
-    const invalidRDAs = assignedRDAs.filter((rdaKey) => !(rdaKey in RDAs));
-    if (invalidRDAs.length > 0) {
-      return next(
-        new ErrorResponse(
-          `Invalid assignedRDAs provided: ${invalidRDAs.join(", ")}`,
-          400,
-        ),
-      );
-    }
-    updateFields.assignedRDAs = assignedRDAs.map((rdaKey) => RDAs[rdaKey]);
+  if (!assignedLGA) {
+    return next(new ErrorResponse("assignedLGA is required", 400));
   }
 
-  if (Object.keys(updateFields).length === 0) {
+  if (!(assignedLGA in LGAs)) {
     return next(
-      new ErrorResponse(
-        "Only assignedLGAs or assignedRDAs can be updated",
-        400,
-      ),
+      new ErrorResponse(`Invalid assignedLGA provided: ${assignedLGA}`, 400),
     );
   }
 
-  user = await User.create({
-    email: req.body.email,
-    firstName: req.body.firstName,
-    lastName: req.body.lastName,
-    password: req.body.password,
-    assignedLGAs: updateFields.assignedLGAs || [],
-    assignedRDAs: updateFields.assignedRDAs || [],
-  });
+  const assignedLGAName = LGAs[assignedLGA];
 
-  await user.save();
+  const message = `Congratulations! You have been appointed as an LGA Administrator on the Civil Servant Management System.
+
+  Your assigned Local Government Area (LGA) is: <strong>${assignedLGAName}</strong>.
+
+  As the administrator for this LGA, you are responsible for managing civil servant records and carrying out administrative duties within your assigned jurisdiction.
+
+  Please log in using the credentials provided in this email and change your password after your first login.
+
+  We wish you success in your new role.`;
+
+  user = await User.create({
+    email,
+    firstName,
+    lastName,
+    password,
+    assignedLGA: assignedLGAName,
+    role: "admin",
+  });
 
   try {
     await sendEmail(user.email, "Invitation as Admin", "invite-admin", {
       name: user.firstName,
       email: user.email,
-      password: req.body.password,
+      password,
+      message,
     });
 
-    res.status(200).json({
+    res.status(201).json({
       success: true,
       data: {
         email: user.email,
         role: user.role,
-        message: "A confirmation code has been sent to your email",
+        message: "Admin account created successfully",
       },
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    // Optional: remove the created user if the email fails
+    await User.findByIdAndDelete(user._id);
+
+    return next(new ErrorResponse("Email could not be sent", 500));
+  }
+});
+
+// @DESC        Register Superadmin
+// @ROUTE       POST  /api/v1/users/add-admin
+// @ACCESS      Private
+exports.addCoordinator = asyncHandler(async (req, res, next) => {
+  const { email, firstName, lastName, password } = req.body;
+
+  let user = await User.findOne({ email });
+
+  if (user) {
+    return next(new ErrorResponse("User already exists", 400));
+  }
+
+  const assignedLGA = req.user.assignedLGA;
+
+  if (!assignedLGA) {
+    return next(
+      new ErrorResponse("Your account is not assigned to any LGA.", 400),
+    );
+  }
+
+  const message = `
+  Congratulations! You have been appointed as a <strong>Coordinator</strong> on the Civil Servant Management System.
+
+  Your assigned Local Government Area (LGA):<strong> ${assignedLGA}</strong>
+
+  As a Coordinator, you will support the administration of civil servant records and other assigned activities within your Local Government Area.
+
+  Please log in using the credentials below and change your password after your first login.
+
+  We wish you every success in your new role.
+
+`;
+
+  user = await User.create({
+    email,
+    firstName,
+    lastName,
+    password,
+    assignedLGA,
+    role: "coordinator",
+  });
+
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $push: {
+        coordinators: user._id,
+      },
+    },
+    { new: true },
+  );
+
+  try {
+    await sendEmail(user.email, "Invitation as Coordinator", "invite-admin", {
+      name: user.firstName,
+      email: user.email,
+      password,
+      message,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        email: user.email,
+        role: user.role,
+        assignedLGA: user.assignedLGA,
+        message: "Coordinator account created successfully.",
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    // Optional: remove the created user if the email fails
+    await User.findByIdAndDelete(user._id);
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $pull: {
+        coordinators: user._id,
+      },
+    });
+
     return next(new ErrorResponse("Email could not be sent", 500));
   }
 });

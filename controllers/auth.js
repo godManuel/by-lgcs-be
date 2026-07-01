@@ -58,35 +58,46 @@ exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });
   if (!user) return next(new ErrorResponse("User not found", 404));
 
-  const verifiedOTP = await user.verifyEmailOTP(req.body.emailOTP);
-  if (!verifiedOTP) return next(new ErrorResponse("Invalid OTP"));
-
-  if (user.emailOTPExpire < Date.now()) {
-    await user.delete();
-    next(new ErrorResponse("OTP Expired! Request a new one", 400));
+  if (!user.emailOTP || !user.emailOTPExpire) {
+    return next(
+      new ErrorResponse("No active OTP found. Please request a new one.", 400),
+    );
   }
 
-  user.emailOTP = undefined;
-  user.emailOTPExpire = undefined;
+  if (user.emailOTPExpire < Date.now()) {
+    user.emailOTP = undefined;
+    user.emailOTPExpire = undefined;
+    await user.save();
+
+    return next(
+      new ErrorResponse("OTP has expired. Please request a new one.", 400),
+    );
+  }
+
+  const verifiedOTP = await user.verifyEmailOTP(req.body.emailOTP);
+
+  if (!verifiedOTP) {
+    return next(new ErrorResponse("Invalid OTP.", 400));
+  }
 
   const token = user.getSignedToken();
 
   await user.save();
 
-  const resolvedLGAs = user.assignedLGAs.map((key) => LGAs[key] || key);
+  const resolvedLGA = user.assignedLGA
+    ? LGAs[user.assignedLGA] || user.assignedLGA
+    : null;
   const resolvedRDAs = user.assignedRDAs.map((key) => RDAs[key] || key);
 
   let message = "";
 
   switch (true) {
-    case resolvedLGAs.length > 0 && resolvedRDAs.length > 0:
-      message = `You are assigned to LGAs: ${resolvedLGAs.join(
-        ", ",
-      )} and RDAs: ${resolvedRDAs.join(", ")}`;
+    case resolvedLGA && resolvedRDAs.length > 0:
+      message = `You are assigned to LGA: ${resolvedLGA} and RDAs: ${resolvedRDAs.join(", ")}`;
       break;
 
-    case resolvedLGAs.length > 0:
-      message = `You are assigned to LGAs: ${resolvedLGAs.join(", ")}`;
+    case resolvedLGA:
+      message = `You are assigned to LGA: ${resolvedLGA}`;
       break;
 
     case resolvedRDAs.length > 0:
@@ -104,7 +115,7 @@ exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
       role: user.role,
       name: user.firstName + " " + user.lastName,
       statistics: user.statistics,
-      assignedLGAs: resolvedLGAs.length > 0 ? user.assignedLGAs : null,
+      assignedLGA: resolvedLGA,
       assignedRDAs: resolvedRDAs.length > 0 ? user.assignedRDAs : null,
       message,
       token,

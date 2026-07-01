@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   registerSuperAdmin,
   addAdmin,
+  addCoordinator,
   getAllAdmins,
   updateAdmin,
   removeAdminAreas,
@@ -92,6 +93,11 @@ router.route("/register-superadmin").post(registerSuperAdmin);
  */
 // @POST - Add Admin
 router.route("/add-admin").post(protect, authorize("superadmin"), addAdmin);
+
+// @POST - Add Coordinator
+router
+  .route("/add-coordinator")
+  .post(protect, authorize("admin"), addCoordinator);
 
 router.route("/admins").get(protect, authorize("superadmin"), getAllAdmins);
 

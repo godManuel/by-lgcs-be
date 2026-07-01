@@ -88,6 +88,7 @@ module.exports = (body, photo = null) => {
     hasOND: body.hasOND,
     hasHND: body.hasHND,
     hasBL: body.hasBL,
+    hasBachelorsDegree: body.hasBachelorsDegree,
     hasLLB: body.hasLLB,
     hasLLD: body.hasLLD,
     hasLLM: body.hasLLM,

@@ -25,9 +25,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["superadmin", "admin"],
+    enum: ["superadmin", "admin", "coordinator"],
     required: true,
-    default: "admin",
   },
   assignedRDAs: {
     type: [String],
@@ -41,8 +40,8 @@ const userSchema = new mongoose.Schema({
     //   message: "assignedRDAs must contain at least one value!",
     // },
   },
-  assignedLGAs: {
-    type: [String],
+  assignedLGA: {
+    type: String,
     // validate: {
     //   validator: function (v) {
     //     if (this.assignedRDAs.length === 0) {
@@ -53,6 +52,12 @@ const userSchema = new mongoose.Schema({
     //   message: "assignedLGAs must contain at least one value!",
     // },
   },
+  coordinators: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
   statistics: {
     totalServants: {
       type: Number,
@@ -124,6 +129,10 @@ userSchema.methods.getEmailOTP = async function () {
 
 /* TASK -> Compare emailOTP with req.body.emailOTP  */
 userSchema.methods.verifyEmailOTP = async function (enteredOTP) {
+  if (!this.emailOTP) {
+    throw new Error("OTP has expired or is no longer available.");
+  }
+
   return await bcrypt.compare(enteredOTP, this.emailOTP);
 };
 

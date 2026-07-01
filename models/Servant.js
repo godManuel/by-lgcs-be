@@ -158,6 +158,10 @@ const servantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    hasBachelorsDegree: {
+      type: Boolean,
+      default: false,
+    },
     hasLLB: {
       type: Boolean,
       default: false,

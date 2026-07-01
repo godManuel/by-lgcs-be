@@ -111,3 +111,48 @@ exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
     },
   });
 });
+
+exports.resendLoginOTP = asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return next(new ErrorResponse("Please provide your email address", 400));
+  }
+
+  // Find user
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return next(new ErrorResponse("User not found", 404));
+  }
+
+  // Generate a new OTP and expiry time
+  const emailOTP = await user.getEmailOTP();
+  await user.save({ validateBeforeSave: false });
+
+  try {
+    await sendEmail(
+      user.email,
+      `Your Verification Code is ${emailOTP}`,
+      "otp-verification",
+      {
+        name: user.firstName,
+        expiryTime: user.emailOTPExpire,
+        otp: emailOTP,
+      },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "A new verification code has been sent to your email.",
+      data: {
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    return next(new ErrorResponse("Email could not be sent", 500));
+  }
+});

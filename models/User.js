@@ -109,16 +109,15 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 /* TASK -> Generate user OTP for Email Verification */
-userSchema.methods.getEmailOTP = async function () {
-  let otp = Math.floor(100000 + Math.random() * 900000);
-  otp = otp.toString();
+const OTP_EXPIRY_MINUTES = 5;
 
-  // Encrypt OTP and save in current user's database
+userSchema.methods.getEmailOTP = async function () {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
   const salt = await bcrypt.genSalt(10);
   this.emailOTP = await bcrypt.hash(otp, salt);
 
-  // Set the OTP Expiration to 30 minutes ahead
-  this.emailOTPExpire = Date.now() + 30 * 60 * 1000;
+  this.emailOTPExpire = Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000;
 
   return otp;
 };

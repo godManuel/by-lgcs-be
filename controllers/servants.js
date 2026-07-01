@@ -806,60 +806,73 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
   }
 
   if (role === "admin") {
-    // Step 2: Combine RDAs and LGAs to match codes to actual area names
-    const combinedServiceAreas = {
-      ...RDAs,
-      ...LGAs,
-    };
+    // Normalize values for comparison
+    const normalize = (value = "") => value.toLowerCase().trim();
 
-    const assignedKeys = [...assignedRDAs, ...assignedLGAs];
-    const allowedAreaValues = assignedKeys
-      .map((key) => combinedServiceAreas[key])
-      .filter(Boolean)
-      .map((area) => area.toLowerCase());
+    // Get all areas assigned to the admin
+    const allowedAreaValues = [
+      ...(assignedRDAs || []),
+      ...(assignedLGAs || []),
+    ].map(normalize);
 
-    const servantArea = servant.serviceArea?.toLowerCase();
+    const servantArea = normalize(servant.serviceArea);
 
-    // Step 3: Check if servant's serviceArea is in admin's assigned areas
+    // Check if the admin is authorized to access this servant's service area
     if (!allowedAreaValues.includes(servantArea)) {
       return next(
         new ErrorResponse("You are not assigned to this region", 403),
       );
     }
 
-    // Step 4: Proceed with the update
+    // Proceed with document upload
     const files = req.files;
     const docNames = req.body.names;
 
     if (!files || files.length === 0) {
-      return res.status(400).json({ error: "No files uploaded" });
+      return res.status(400).json({
+        success: false,
+        message: "No files uploaded",
+      });
     }
 
-    const parsedNames = Array.isArray(docNames) ? docNames : [docNames];
+    const parsedNames = Array.isArray(docNames)
+      ? docNames
+      : docNames
+        ? [docNames]
+        : [];
 
     const uploadedDocs = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+
       const uploadResult = await cloudinary.uploads(file.path, {
         folder: "user_documents",
         resource_type: "auto",
       });
-
-      console.log(uploadResult);
 
       uploadedDocs.push({
         name: parsedNames[i] || `Document ${i + 1}`,
         url: uploadResult.url,
       });
 
-      fs.unlinkSync(file.path); // clean up temp file
+      // Delete temporary file
+      fs.unlinkSync(file.path);
     }
 
     servant = await Servant.findByIdAndUpdate(
       servant._id,
-      { $push: { certificates: { $each: uploadedDocs } } },
-      { new: true, runValidators: true },
+      {
+        $push: {
+          certificates: {
+            $each: uploadedDocs,
+          },
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
     );
 
     const uploadedCount = uploadedDocs.length;
@@ -870,9 +883,9 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
       },
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      data: { servant },
+      data: servant,
     });
   }
 });

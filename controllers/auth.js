@@ -103,6 +103,7 @@ exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
       email: user.email,
       role: user.role,
       name: user.firstName + " " + user.lastName,
+      statistics: user.statistics,
       assignedLGAs: resolvedLGAs.length > 0 ? user.assignedLGAs : null,
       assignedRDAs: resolvedRDAs.length > 0 ? user.assignedRDAs : null,
       message,

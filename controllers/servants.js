@@ -253,7 +253,7 @@ exports.submitCivilServant = asyncHandler(async (req, res, next) => {
       status: servant.formStatus,
       progress: servant.progress,
       message: "Civil Servant record completed",
-      servant,
+      data: servant,
     });
   }
 

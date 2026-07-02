@@ -484,7 +484,7 @@ exports.deleteAdmin = asyncHandler(async (req, res, next) => {
 });
 
 exports.deleteCoordinator = asyncHandler(async (req, res, next) => {
-  const { email } = req.body;
+  const { email } = req.query;
   if (!email) return next(new ErrorResponse("No coordinator selected", 400));
 
   const coordinator = await User.findOneAndDelete({

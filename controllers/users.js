@@ -242,7 +242,8 @@ exports.addCoordinator = asyncHandler(async (req, res, next) => {
       data: {
         email: user.email,
         role: user.role,
-        name: user.firstName + " " + user.lastName,
+        firstName: user.firstName,
+        lastName: user.lastName,
         assignedLGA: user.assignedLGA,
         message: "Coordinator account created successfully.",
       },
@@ -478,6 +479,25 @@ exports.deleteAdmin = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "Admin removed successfully",
+    data: {},
+  });
+});
+
+exports.deleteCoordinator = asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+  if (!email) return next(new ErrorResponse("No coordinator selected", 400));
+
+  const coordinator = await User.findOneAndDelete({
+    email,
+    role: "coordinator",
+  });
+  if (!coordinator) {
+    return next(new ErrorResponse("Coordinator not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Coordinator removed successfully",
     data: {},
   });
 });

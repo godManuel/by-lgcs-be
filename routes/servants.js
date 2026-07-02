@@ -195,15 +195,6 @@ router
   .put(
     protect,
     authorize("superadmin", "admin", "coordinator"),
-    upload.array("certificates"),
-    uploadCerts,
-  );
-
-router
-  .route("/:id/certificates")
-  .put(
-    protect,
-    authorize("superadmin", "admin", "coordinator"),
     uploadArray("certificates"),
     uploadCerts,
   );

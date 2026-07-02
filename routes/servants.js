@@ -12,7 +12,6 @@ const {
   getCivilServants,
   updateCivilServant,
   uploadCerts,
-  deleteCivilServant,
 } = require("../controllers/servants");
 
 const { protect, authorize } = require("../middlewares/auth");
@@ -147,14 +146,14 @@ const Servant = require("../models/Servant");
 router.post(
   "/personal",
   protect,
-  authorize("superadmin", "admin"),
+  authorize("superadmin", "admin", "coordinator"),
   addPersonalInformation,
 );
 
 router.patch(
   "/:id/photo",
   protect,
-  authorize("superadmin", "admin"),
+  authorize("superadmin", "admin", "coordinator"),
   upload.single("displayPhoto"),
   uploadBiometricPhoto,
 );
@@ -162,7 +161,7 @@ router.patch(
 router.patch(
   "/:id/document-selection",
   protect,
-  authorize("superadmin", "admin"),
+  authorize("superadmin", "admin", "coordinator"),
   saveSelectedDocuments,
 );
 
@@ -186,7 +185,7 @@ router
   .route("/")
   .get(
     protect,
-    authorize("superadmin", "admin"),
+    authorize("superadmin", "admin", "coordinator"),
     advancedResults(Servant),
     getCivilServants,
   );
@@ -195,7 +194,7 @@ router
   .route("/:id/certificates")
   .put(
     protect,
-    authorize("superadmin", "admin"),
+    authorize("superadmin", "admin", "coordinator"),
     upload.array("certificates"),
     uploadCerts,
   );
@@ -203,14 +202,18 @@ router
 router.patch(
   "/:id/submit",
   protect,
-  authorize("superadmin", "admin"),
+  authorize("superadmin", "admin", "coordinator"),
   submitCivilServant,
 );
 
 // @GET - Fetch a single Civil Servant
 router
   .route("/:servantId")
-  .get(protect, authorize("superadmin", "admin"), getCivilServant);
+  .get(
+    protect,
+    authorize("superadmin", "admin", "coordinator"),
+    getCivilServant,
+  );
 
 /**
  * @swagger
@@ -245,10 +248,18 @@ router
  */
 router
   .route("/:servantId")
-  .put(protect, authorize("superadmin", "admin"), updateCivilServant);
+  .put(
+    protect,
+    authorize("superadmin", "admin", "coordinator"),
+    updateCivilServant,
+  );
 
-router
-  .route("/:servantId")
-  .delete(protect, authorize("superadmin", "admin"), deleteCivilServant);
+// router
+//   .route("/:servantId")
+//   .delete(
+//     protect,
+//     authorize("superadmin", "admin", "coordinator"),
+//     deleteCivilServant,
+//   );
 
 module.exports = router;

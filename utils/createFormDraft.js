@@ -1,6 +1,7 @@
 const buildServantPayload = require("./buildServantPayload");
 const Servant = require("../models/Servant");
 const User = require("../models/User");
+const Counter = require("../models/Counter");
 
 exports.createDraft = async (req, res, next) => {
   const servant = new Servant({
@@ -15,13 +16,21 @@ exports.createDraft = async (req, res, next) => {
 
   const serviceRegionCode = servant.serviceRegion.toUpperCase();
 
-  const servantCount = await Servant.countDocuments({
-    serviceArea: servant.serviceArea,
-  });
+  const counter = await Counter.findOneAndUpdate(
+    {
+      serviceRegion: servant.serviceRegion,
+      serviceArea: servant.serviceArea,
+    },
+    {
+      $inc: { sequence: 1 },
+    },
+    {
+      new: true,
+      upsert: true,
+    },
+  );
 
-  servant.applicantID = `BY/LGSC/${serviceRegionCode}/${serviceAreaCode}/${(
-    servantCount + 1
-  )
+  servant.applicantID = `BY/LGSC/${serviceRegionCode}/${serviceAreaCode}/${counter.sequence
     .toString()
     .padStart(3, "0")}`;
 

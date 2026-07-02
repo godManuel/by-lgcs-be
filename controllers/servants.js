@@ -35,34 +35,54 @@ const { createDraft } = require("../utils/createFormDraft.js");
 // @DESC        Update Civil Servant Personal Information
 // @ROUTE       PATCH  /api/v1/civil-servants/
 // @ACCESS      Private
+// exports.addPersonalInformation = asyncHandler(async (req, res, next) => {
+//   const { serviceArea } = req.body;
+//   const { role, assignedRDAs, assignedLGA } = req.user;
+
+//   if (role === "superadmin") {
+//     return createDraft(req, res, next);
+//   }
+
+//   if (role === "admin" || role === "coordinator") {
+//     const assignedLGAKeys = assignedLGAs
+//       .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
+//       .filter(Boolean);
+
+//     const assignedRDAKeys = assignedRDAs
+//       .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
+//       .filter(Boolean);
+
+//     const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
+//     const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
+
+//     if (
+//       (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
+//       (isRDAKey && assignedRDAKeys.includes(serviceArea))
+//     ) {
+//       return createDraft(req, res, next);
+//     }
+
+//     return next(new ErrorResponse("You are not assigned to this region", 403));
+//   }
+// });
 exports.addPersonalInformation = asyncHandler(async (req, res, next) => {
   const { serviceArea } = req.body;
-  const { role, assignedRDAs, assignedLGAs } = req.user;
+  const { role, assignedLGA } = req.user;
 
   if (role === "superadmin") {
     return createDraft(req, res, next);
   }
 
-  if (role === "admin") {
-    const assignedLGAKeys = assignedLGAs
-      .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
-      .filter(Boolean);
+  if (role === "admin" || role === "coordinator" || role === "coordinator") {
+    const assignedLGAKey = Object.keys(LGAs).find(
+      (key) => LGAs[key] === assignedLGA,
+    );
 
-    const assignedRDAKeys = assignedRDAs
-      .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
-      .filter(Boolean);
-
-    const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
-    const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
-
-    if (
-      (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
-      (isRDAKey && assignedRDAKeys.includes(serviceArea))
-    ) {
+    if (assignedLGAKey === serviceArea) {
       return createDraft(req, res, next);
     }
 
-    return next(new ErrorResponse("You are not assigned to this region", 403));
+    return next(new ErrorResponse("You are not assigned to this LGA", 403));
   }
 });
 
@@ -70,7 +90,7 @@ exports.addPersonalInformation = asyncHandler(async (req, res, next) => {
 // @ROUTE       PATCH  /api/v1/civil-servants/:id/photo
 // @ACCESS      Private
 exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
-  const { role, assignedRDAs, assignedLGAs } = req.user;
+  const { role, assignedRDAs, assignedLGA } = req.user;
 
   const servant = await Servant.findById(req.params.id);
 
@@ -99,44 +119,29 @@ exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (role === "admin") {
-    // Map assigned LGA/RDA values to their keys
-    const assignedLGAKeys = assignedLGAs
-      .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
-      .filter(Boolean);
-    const assignedRDAKeys = assignedRDAs
-      .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
-      .filter(Boolean);
+  if (role === "admin" || role === "coordinator" || role === "coordinator") {
+    const assignedLGAKey = Object.keys(LGAs).find(
+      (key) => LGAs[key] === assignedLGA,
+    );
 
-    // Check if serviceArea is a valid key in LGAs or RDAs
-    const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
-    const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
-
-    if (
-      (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
-      (isRDAKey && assignedRDAKeys.includes(serviceArea))
-    ) {
-      const uploader = async (path) =>
-        await cloudinary.uploads(path, "civil-servants");
-
-      const newPath = await uploader(req.file.path);
-
-      fs.unlinkSync(req.file.path);
-      servant.displayPhoto = newPath.url;
-      servant.currentStep = 2;
-
-      await servant.save();
-
-      res.json({
-        success: true,
-        message: "Biometric photo added successfully",
-        data: servant,
-      });
-    } else {
-      return next(
-        new ErrorResponse("You are not assigned to this region", 403),
-      );
+    if (assignedLGAKey !== serviceArea) {
+      return next(new ErrorResponse("You are not assigned to this LGA", 403));
     }
+
+    const newPath = await cloudinary.uploads(req.file.path, "civil-servants");
+
+    fs.unlinkSync(req.file.path);
+
+    servant.displayPhoto = newPath.url;
+    servant.currentStep = 2;
+
+    await servant.save();
+
+    return res.json({
+      success: true,
+      message: "Biometric photo added successfully",
+      data: servant,
+    });
   }
 });
 
@@ -144,7 +149,7 @@ exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
 // @ROUTE       PATCH  /api/v1/civil-servants/:id/document-selection
 // @ACCESS      Private
 exports.saveSelectedDocuments = asyncHandler(async (req, res, next) => {
-  const { role, assignedRDAs, assignedLGAs } = req.user;
+  const { role, assignedRDAs, assignedLGA } = req.user;
 
   const servant = await Servant.findById(req.params.id);
 
@@ -152,10 +157,12 @@ exports.saveSelectedDocuments = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse("Servant not found", 404));
   }
 
-  const { serviceArea, serviceRegion } = req.body;
+  const { serviceArea } = req.body;
 
   if (role === "superadmin") {
-    servant.documentsSelected = Object.values(req.body).some((v) => v === true);
+    servant.documentsSelected = Object.values(req.body).some(
+      (value) => value === true,
+    );
 
     Object.assign(servant, req.body);
 
@@ -163,32 +170,35 @@ exports.saveSelectedDocuments = asyncHandler(async (req, res, next) => {
 
     await servant.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: "Documents for upload selected successfully",
       data: servant,
     });
   }
 
-  if (role === "admin") {
-    // Map assigned LGA/RDA values to their keys
-    const assignedLGAKeys = assignedLGAs
-      .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
-      .filter(Boolean);
-    const assignedRDAKeys = assignedRDAs
-      .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
+  if (role === "admin" || role === "coordinator" || role === "coordinator") {
+    // Convert the assigned LGA value back to its corresponding key
+    const assignedLGAKey = Object.keys(LGAs).find(
+      (key) => LGAs[key] === assignedLGA,
+    );
+
+    // Convert assigned RDA values back to their corresponding keys
+    const assignedRDAKeys = (assignedRDAs || [])
+      .map((value) => Object.keys(RDAs).find((key) => RDAs[key] === value))
       .filter(Boolean);
 
-    // Check if serviceArea is a valid key in LGAs or RDAs
+    // Determine whether the submitted serviceArea is an LGA or RDA
     const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
     const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
 
+    // Allow access only if the admin is assigned to the selected LGA or RDA
     if (
-      (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
+      (isLGAKey && assignedLGAKey === serviceArea) ||
       (isRDAKey && assignedRDAKeys.includes(serviceArea))
     ) {
       servant.documentsSelected = Object.values(req.body).some(
-        (v) => v === true,
+        (value) => value === true,
       );
 
       Object.assign(servant, req.body);
@@ -197,24 +207,24 @@ exports.saveSelectedDocuments = asyncHandler(async (req, res, next) => {
 
       await servant.save();
 
-      res.json({
+      return res.json({
         success: true,
         message: "Documents for upload selected successfully",
         data: servant,
       });
-    } else {
-      return next(
-        new ErrorResponse("You are not assigned to this region", 403),
-      );
     }
+
+    return next(new ErrorResponse("You are not assigned to this region", 403));
   }
+
+  return next(new ErrorResponse("Unauthorized", 403));
 });
 
 // @DESC        Submit Civil Servant Application
 // @ROUTE       PATCH  /api/v1/civil-servants/:id/submit
 // @ACCESS      Private
 exports.submitCivilServant = asyncHandler(async (req, res, next) => {
-  const { role, assignedRDAs, assignedLGAs } = req.user;
+  const { role, assignedRDAs, assignedLGA } = req.user;
 
   const servant = await Servant.findById(req.params.id);
 
@@ -222,14 +232,14 @@ exports.submitCivilServant = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse("Servant not found", 404));
   }
 
-  const { serviceArea, serviceRegion } = req.body;
+  const { serviceArea } = req.body;
 
   if (role === "superadmin") {
     servant.currentStep = 4;
 
     await servant.save();
 
-    res.json({
+    return res.json({
       success: true,
       status: servant.formStatus,
       progress: servant.progress,
@@ -238,21 +248,24 @@ exports.submitCivilServant = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (role === "admin") {
-    // Map assigned LGA/RDA values to their keys
-    const assignedLGAKeys = assignedLGAs
-      .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
-      .filter(Boolean);
-    const assignedRDAKeys = assignedRDAs
-      .map((val) => Object.keys(RDAs).find((key) => RDAs[key] === val))
+  if (role === "admin" || role === "coordinator" || role === "coordinator") {
+    // Convert the assigned LGA value back to its corresponding key
+    const assignedLGAKey = Object.keys(LGAs).find(
+      (key) => LGAs[key] === assignedLGA,
+    );
+
+    // Convert assigned RDA values back to their corresponding keys
+    const assignedRDAKeys = (assignedRDAs || [])
+      .map((value) => Object.keys(RDAs).find((key) => RDAs[key] === value))
       .filter(Boolean);
 
-    // Check if serviceArea is a valid key in LGAs or RDAs
+    // Determine whether the submitted serviceArea is an LGA or RDA
     const isLGAKey = Object.prototype.hasOwnProperty.call(LGAs, serviceArea);
     const isRDAKey = Object.prototype.hasOwnProperty.call(RDAs, serviceArea);
 
+    // Check whether the admin is authorized to submit this servant
     if (
-      (isLGAKey && assignedLGAKeys.includes(serviceArea)) ||
+      (isLGAKey && assignedLGAKey === serviceArea) ||
       (isRDAKey && assignedRDAKeys.includes(serviceArea))
     ) {
       servant.currentStep = 4;
@@ -266,19 +279,19 @@ exports.submitCivilServant = asyncHandler(async (req, res, next) => {
         },
       });
 
-      res.json({
+      return res.json({
         success: true,
         status: servant.formStatus,
         progress: servant.progress,
         message: "Civil Servant record completed",
         servant,
       });
-    } else {
-      return next(
-        new ErrorResponse("You are not assigned to this region", 403),
-      );
     }
+
+    return next(new ErrorResponse("You are not assigned to this region", 403));
   }
+
+  return next(new ErrorResponse("Unauthorized", 403));
 });
 
 // @DESC        Add Civil Servant
@@ -399,7 +412,7 @@ exports.submitCivilServant = asyncHandler(async (req, res, next) => {
 //     });
 //   }
 
-//   if (role === "admin") {
+//   if (role === "admin" || role === "coordinator" || role === "coordinator") {
 //     // Map assigned LGA/RDA values to their keys
 //     const assignedLGAKeys = assignedLGAs
 //       .map((val) => Object.keys(LGAs).find((key) => LGAs[key] === val))
@@ -489,8 +502,8 @@ exports.submitCivilServant = asyncHandler(async (req, res, next) => {
 // @ROUTE       POST  /api/v1/civil-servants/
 // @ACCESS      Private
 exports.getCivilServants = asyncHandler(async (req, res, next) => {
-  const { serviceArea, name } = req.query;
-  const { role, assignedRDAs, assignedLGAs } = req.user;
+  const { search } = req.query;
+  const { role, assignedRDAs, assignedLGA } = req.user;
 
   if (role === "superadmin") {
     const { success, nbHits, data, total, pagination } = res.advancedResults;
@@ -506,90 +519,52 @@ exports.getCivilServants = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (role === "admin") {
-    if (req.query.serviceArea) {
-      const normalize = (value = "") => value.toLowerCase().trim();
+  if (role === "admin" || role === "coordinator") {
+    const normalize = (value = "") => value.toLowerCase().trim();
 
-      const allowedAreas = [...assignedRDAs, ...assignedLGAs].map(normalize);
+    // Coordinator/Admin can only access their assigned LGA (+ RDAs if applicable)
+    const allowedAreaValues = [assignedLGA, ...(assignedRDAs || [])]
+      .filter(Boolean)
+      .map(normalize);
 
-      if (!allowedAreas.includes(normalize(serviceArea))) {
+    // Handle universal search
+    if (req.query.search) {
+      const results = res.advancedResults?.data || [];
+
+      const authorizedServants = results.filter((servant) =>
+        allowedAreaValues.includes(normalize(servant.serviceArea)),
+      );
+
+      if (!authorizedServants.length) {
         return next(
           new ErrorResponse("You are not assigned to this region", 403),
         );
       }
 
-      const { success, total, nbHits, pagination, data } = res.advancedResults;
-
-      const transformedData = data.map(getRetirementStatus);
+      const transformedServants = authorizedServants.map(getRetirementStatus);
 
       return res.status(200).json({
-        success,
-        total,
-        nbHits,
-        pagination,
-        data: transformedData,
+        ...res.advancedResults,
+        nbHits: transformedServants.length,
+        data: transformedServants,
       });
     }
 
-    if (req.query.name) {
-      // Combine all service area mappings
-      const allowedAreaValues = [...assignedRDAs, ...assignedLGAs].map((area) =>
-        area.toLowerCase().trim(),
-      );
+    // No search supplied — return all servants belonging to the user's area
+    const results = res.advancedResults?.data || [];
 
-      // Get search results (e.g., from advancedResults middleware)
-      const results = res.advancedResults?.data || [];
+    const authorizedServants = results.filter((servant) =>
+      allowedAreaValues.includes(normalize(servant.serviceArea)),
+    );
 
-      // Filter results based on service area access
-      const normalize = (value = "") => value.toLowerCase().trim();
+    const transformedServants = authorizedServants.map(getRetirementStatus);
 
-      const authorizedServants = results.filter((servant) =>
-        allowedAreaValues.includes(normalize(servant.serviceArea)),
-      );
-
-      if (authorizedServants.length === 0) {
-        return next(
-          new ErrorResponse("You are not assigned to this region", 403),
-        );
-      }
-
-      const transformedServants = authorizedServants.map(getRetirementStatus);
-
-      res.advancedResults.data = transformedServants;
-      res.advancedResults.nbHits = transformedServants.length;
-
-      return res.status(200).json(res.advancedResults);
-    }
-
-    if (req.query.applicantID) {
-      // Combine all service area mappings
-      const allowedAreaValues = [...assignedRDAs, ...assignedLGAs].map((area) =>
-        area.toLowerCase().trim(),
-      );
-
-      // Get result from advancedResults middleware
-      const results = res.advancedResults?.data || [];
-
-      // Usually applicantID returns a single servant, but we still use array to keep it consistent
-      const normalize = (value = "") => value.toLowerCase().trim();
-
-      const authorizedServants = results.filter((servant) =>
-        allowedAreaValues.includes(normalize(servant.serviceArea)),
-      );
-
-      if (authorizedServants.length === 0) {
-        return next(
-          new ErrorResponse("You are not assigned to this region", 403),
-        );
-      }
-
-      const transformedServants = authorizedServants.map(getRetirementStatus);
-
-      res.advancedResults.data = transformedServants;
-      res.advancedResults.nbHits = transformedServants.length;
-
-      return res.status(200).json(res.advancedResults);
-    }
+    return res.status(200).json({
+      ...res.advancedResults,
+      total: transformedServants.length,
+      nbHits: transformedServants.length,
+      data: transformedServants,
+    });
   }
 });
 
@@ -610,7 +585,7 @@ exports.getCivilServant = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (role === "admin") {
+  if (role === "admin" || role === "coordinator") {
     if (
       assignedLGAs.includes(serviceArea) ||
       assignedRDAs.includes(serviceArea)
@@ -654,7 +629,7 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (role === "admin") {
+  if (role === "admin" || role === "coordinator") {
     const servantId = req.params.servantId;
 
     // Step 1: Fetch the servant by ID
@@ -715,7 +690,7 @@ exports.deleteCivilServant = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (role === "admin") {
+  if (role === "admin" || role === "coordinator") {
     const servant = await Servant.findById(servantId);
     if (!servant)
       return next(new ErrorResponse("Civil servant not found", 404));
@@ -750,18 +725,23 @@ exports.deleteCivilServant = asyncHandler(async (req, res, next) => {
 // @ROUTE       PATCH  /api/v1/civil-servants/:id/certificates
 // @ACCESS      Private
 exports.uploadCerts = asyncHandler(async (req, res, next) => {
-  const { role, assignedRDAs, assignedLGAs } = req.user;
+  const { role, assignedRDAs, assignedLGA } = req.user;
 
   let servant = await Servant.findById(req.params.id);
-  if (!servant) return next(new ErrorResponse("Civil servant not found!", 404));
+
+  if (!servant) {
+    return next(new ErrorResponse("Civil servant not found!", 404));
+  }
 
   if (role === "superadmin") {
-    // const userId = req.params.userId;
     const files = req.files;
     const docNames = req.body.names;
 
     if (!files || files.length === 0) {
-      return res.status(400).json({ error: "No files uploaded" });
+      return res.status(400).json({
+        success: false,
+        message: "No files uploaded",
+      });
     }
 
     const parsedNames = Array.isArray(docNames) ? docNames : [docNames];
@@ -770,61 +750,64 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+
       const uploadResult = await cloudinary.uploads(file.path, {
         folder: "user_documents",
         resource_type: "auto",
       });
-
-      console.log(uploadResult);
 
       uploadedDocs.push({
         name: parsedNames[i] || `Document ${i + 1}`,
         url: uploadResult.url,
       });
 
-      fs.unlinkSync(file.path); // clean up temp file
+      fs.unlinkSync(file.path);
     }
 
     servant = await Servant.findByIdAndUpdate(
       servant._id,
-      { $push: { certificates: { $each: uploadedDocs } } },
-      { new: true, runValidators: true },
+      {
+        $push: {
+          certificates: {
+            $each: uploadedDocs,
+          },
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
     );
-
-    const uploadedCount = uploadedDocs.length;
 
     await User.findByIdAndUpdate(req.user._id, {
       $inc: {
-        "statistics.totalDocumentsUploaded": uploadedCount,
+        "statistics.totalDocumentsUploaded": uploadedDocs.length,
       },
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      data: { servant },
+      data: servant,
     });
   }
 
-  if (role === "admin") {
+  if (role === "admin" || role === "coordinator") {
     // Normalize values for comparison
     const normalize = (value = "") => value.toLowerCase().trim();
 
-    // Get all areas assigned to the admin
-    const allowedAreaValues = [
-      ...(assignedRDAs || []),
-      ...(assignedLGAs || []),
-    ].map(normalize);
+    // Admin is assigned to only one LGA
+    const allowedAreaValues = [assignedLGA, ...(assignedRDAs || [])]
+      .filter(Boolean)
+      .map(normalize);
 
     const servantArea = normalize(servant.serviceArea);
 
-    // Check if the admin is authorized to access this servant's service area
     if (!allowedAreaValues.includes(servantArea)) {
       return next(
         new ErrorResponse("You are not assigned to this region", 403),
       );
     }
 
-    // Proceed with document upload
     const files = req.files;
     const docNames = req.body.names;
 
@@ -856,7 +839,6 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
         url: uploadResult.url,
       });
 
-      // Delete temporary file
       fs.unlinkSync(file.path);
     }
 
@@ -875,11 +857,9 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
       },
     );
 
-    const uploadedCount = uploadedDocs.length;
-
     await User.findByIdAndUpdate(req.user._id, {
       $inc: {
-        "statistics.totalDocumentsUploaded": uploadedCount,
+        "statistics.totalDocumentsUploaded": uploadedDocs.length,
       },
     });
 
@@ -888,4 +868,6 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
       data: servant,
     });
   }
+
+  return next(new ErrorResponse("Unauthorized", 403));
 });

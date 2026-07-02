@@ -359,7 +359,7 @@ servantSchema.pre("save", async function (next) {
   if (
     this.currentStep === 4 &&
     this.displayPhoto &&
-    (!this.documentsSelected || hasUploadedDocuments)
+    (this.documentsSelected || hasUploadedDocuments)
   ) {
     this.formStatus = "completed";
     this.isComplete = true;

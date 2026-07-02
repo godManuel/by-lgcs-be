@@ -164,6 +164,7 @@ exports.addAdmin = asyncHandler(async (req, res, next) => {
       data: {
         email: user.email,
         role: user.role,
+        assignedLGA: user.assignedLGA,
         message: "Admin account created successfully",
       },
     });

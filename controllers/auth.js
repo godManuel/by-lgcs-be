@@ -55,7 +55,10 @@ exports.login = asyncHandler(async (req, res, next) => {
 // @ROUTE       POST  /api/v1/auth/verify-login
 // @ACCESS      Private
 exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
-  const user = await User.findOne({ email: req.body.email });
+  const user = await User.findOne({ email: req.body.email }).populate(
+    "coordinators",
+    "_id firstName lastName email role",
+  );
   if (!user) return next(new ErrorResponse("User not found", 404));
 
   if (!user.emailOTP || !user.emailOTPExpire) {
@@ -117,6 +120,7 @@ exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
       statistics: user.statistics,
       assignedLGA: resolvedLGA,
       assignedRDAs: resolvedRDAs.length > 0 ? user.assignedRDAs : null,
+      coordinators: user.coordinators.length > 0 ? user.coordinators : null,
       message,
       token,
     },

@@ -242,6 +242,7 @@ exports.addCoordinator = asyncHandler(async (req, res, next) => {
       data: {
         email: user.email,
         role: user.role,
+        name: user.firstName + " " + user.lastName,
         assignedLGA: user.assignedLGA,
         message: "Coordinator account created successfully.",
       },

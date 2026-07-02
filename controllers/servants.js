@@ -609,54 +609,88 @@ exports.getCivilServant = asyncHandler(async (req, res, next) => {
 // @ROUTE       POST  /api/v1/civil-servants/:id
 // @ACCESS      Private
 exports.updateCivilServant = asyncHandler(async (req, res, next) => {
-  const { role, assignedRDAs, assignedLGAs } = req.user;
+  const { role, assignedRDAs, assignedLGA } = req.user;
+
+  // Helper function
+  const getFilteredUpdateBody = (servant, body) => {
+    const updateBody = { ...body };
+
+    if (servant.currentStep === 4 && servant.formStatus === "completed") {
+      const restrictedFields = Object.keys(updateBody).filter(
+        (key) =>
+          key.startsWith("has") ||
+          key === "serviceArea" ||
+          key === "serviceRegion",
+      );
+
+      if (restrictedFields.length > 0) {
+        return next(
+          new ErrorResponse(
+            `The following fields cannot be updated after the record has been completed: ${restrictedFields.join(", ")}`,
+            400,
+          ),
+        );
+      }
+    }
+
+    return updateBody;
+  };
 
   if (role === "superadmin") {
     let servant = await Servant.findById(req.params.servantId);
-    if (!servant) return next(new ErrorResponse("Data not found!", 404));
+
+    if (!servant) {
+      return next(new ErrorResponse("Data not found!", 404));
+    }
+
+    const updateBody = getFilteredUpdateBody(servant, req.body);
 
     servant = await Servant.findByIdAndUpdate(
       req.params.servantId,
       {
-        $set: req.body,
+        $set: updateBody,
       },
-      { new: true, runValidators: true },
+      {
+        new: true,
+        runValidators: true,
+      },
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: { servant },
     });
   }
 
   if (role === "admin" || role === "coordinator") {
-    const servantId = req.params.servantId;
+    const servant = await Servant.findById(req.params.servantId);
 
-    // Step 1: Fetch the servant by ID
-    const servant = await Servant.findById(servantId);
     if (!servant) {
       return next(new ErrorResponse("Civil servant not found", 404));
     }
 
-    // Step 2: Combine RDAs and LGAs to match codes to actual area names
-    const allowedAreaValues = [...assignedRDAs, ...assignedLGAs].map((area) =>
-      area.toLowerCase().trim(),
-    );
+    // const allowedAreaValues = [
+    //   ...(assignedRDAs || []),
+    //   ...(assignedLGA || []),
+    // ].map((area) => area.toLowerCase().trim());
 
-    const servantArea = servant.serviceArea?.toLowerCase();
+    const servantArea = servant.serviceArea;
 
-    // Step 3: Check if servant's serviceArea is in admin's assigned areas
-    if (!allowedAreaValues.includes(servantArea)) {
+    console.log(servantArea);
+    console.log(assignedLGA);
+
+    if (assignedLGA !== servantArea) {
       return next(
         new ErrorResponse("You are not assigned to this region", 403),
       );
     }
 
-    // Step 4: Proceed with the update
+    const updateBody = getFilteredUpdateBody(servant, req.body);
+
     const updatedServant = await Servant.findByIdAndUpdate(
-      servantId,
+      req.params.servantId,
       {
-        $set: req.body,
+        $set: updateBody,
       },
       {
         new: true,
@@ -675,7 +709,7 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
 // @ROUTE       DELETE  /api/v1/civil-servants/:id
 // @ACCESS      Private
 exports.deleteCivilServant = asyncHandler(async (req, res, next) => {
-  const { role, assignedRDAs, assignedLGAs } = req.user;
+  const { role, assignedRDAs, assignedLGA } = req.user;
   const servantId = req.params.servantId;
 
   if (role === "superadmin") {

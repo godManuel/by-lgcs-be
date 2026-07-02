@@ -90,7 +90,7 @@ exports.addPersonalInformation = asyncHandler(async (req, res, next) => {
 // @ROUTE       PATCH  /api/v1/civil-servants/:id/photo
 // @ACCESS      Private
 exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
-  const { role, assignedRDAs, assignedLGA } = req.user;
+  const { role, assignedLGA } = req.user;
 
   const servant = await Servant.findById(req.params.id);
 
@@ -98,50 +98,59 @@ exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse("Servant not found", 404));
   }
 
-  const { serviceArea, serviceRegion } = req.body;
-
-  if (role === "superadmin") {
-    const uploader = async (path) =>
-      await cloudinary.uploads(path, "civil-servants");
-
-    const newPath = await uploader(req.file.path);
-
-    fs.unlinkSync(req.file.path);
-    servant.displayPhoto = newPath.url;
-    servant.currentStep = 2;
-
-    await servant.save();
-
-    res.json({
-      success: true,
-      message: "Biometric photo added successfully",
-      data: servant,
-    });
+  if (!req.file) {
+    return next(
+      new ErrorResponse("Please upload a biometric photograph.", 400),
+    );
   }
 
-  if (role === "admin" || role === "coordinator" || role === "coordinator") {
+  // Only Admins/Coordinators are restricted by LGA
+  if (role !== "superadmin") {
+    if (role !== "admin" && role !== "coordinator") {
+      return next(new ErrorResponse("Unauthorized", 403));
+    }
+
     const assignedLGAKey = Object.keys(LGAs).find(
       (key) => LGAs[key] === assignedLGA,
     );
 
-    if (assignedLGAKey !== serviceArea) {
+    if (assignedLGAKey !== servant.serviceArea) {
+      if (req.file.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
       return next(new ErrorResponse("You are not assigned to this LGA", 403));
     }
+  }
 
-    const newPath = await cloudinary.uploads(req.file.path, "civil-servants");
+  try {
+    const uploadedPhoto = await cloudinary.uploads(
+      req.file.path,
+      "civil-servants",
+    );
 
-    fs.unlinkSync(req.file.path);
+    if (req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
 
-    servant.displayPhoto = newPath.url;
+    servant.displayPhoto = uploadedPhoto.url;
     servant.currentStep = 2;
 
     await servant.save();
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       message: "Biometric photo added successfully",
       data: servant,
     });
+  } catch (err) {
+    if (req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    return next(
+      new ErrorResponse(err.message || "Error uploading biometric photo.", 500),
+    );
   }
 });
 
@@ -767,69 +776,14 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse("Civil servant not found!", 404));
   }
 
-  if (role === "superadmin") {
-    const files = req.files;
-    const docNames = req.body.names;
-
-    if (!files || files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No files uploaded",
-      });
+  // Authorization
+  if (role !== "superadmin") {
+    if (role !== "admin" && role !== "coordinator") {
+      return next(new ErrorResponse("Unauthorized", 403));
     }
 
-    const parsedNames = Array.isArray(docNames) ? docNames : [docNames];
-
-    const uploadedDocs = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-
-      const uploadResult = await cloudinary.uploads(file.path, {
-        folder: "user_documents",
-        resource_type: "auto",
-      });
-
-      uploadedDocs.push({
-        name: parsedNames[i] || `Document ${i + 1}`,
-        url: uploadResult.url,
-      });
-
-      fs.unlinkSync(file.path);
-    }
-
-    servant = await Servant.findByIdAndUpdate(
-      servant._id,
-      {
-        $push: {
-          certificates: {
-            $each: uploadedDocs,
-          },
-        },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-
-    await User.findByIdAndUpdate(req.user._id, {
-      $inc: {
-        "statistics.totalDocumentsUploaded": uploadedDocs.length,
-      },
-    });
-
-    return res.status(200).json({
-      success: true,
-      data: servant,
-    });
-  }
-
-  if (role === "admin" || role === "coordinator") {
-    // Normalize values for comparison
     const normalize = (value = "") => value.toLowerCase().trim();
 
-    // Admin is assigned to only one LGA
     const allowedAreaValues = [assignedLGA, ...(assignedRDAs || [])]
       .filter(Boolean)
       .map(normalize);
@@ -841,25 +795,25 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
         new ErrorResponse("You are not assigned to this region", 403),
       );
     }
+  }
 
-    const files = req.files;
-    const docNames = req.body.names;
+  // Validate uploaded files
+  const files = req.files;
 
-    if (!files || files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No files uploaded",
-      });
-    }
+  if (!files?.length) {
+    return next(new ErrorResponse("Please upload at least one document.", 400));
+  }
 
-    const parsedNames = Array.isArray(docNames)
-      ? docNames
-      : docNames
-        ? [docNames]
-        : [];
+  // Parse document names
+  const parsedNames = Array.isArray(req.body.names)
+    ? req.body.names
+    : req.body.names
+      ? [req.body.names]
+      : [];
 
-    const uploadedDocs = [];
+  const uploadedDocs = [];
 
+  try {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
@@ -873,35 +827,50 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
         url: uploadResult.url,
       });
 
-      fs.unlinkSync(file.path);
+      // Delete local file after successful upload
+      if (file.path && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
     }
+  } catch (err) {
+    // Clean up any remaining temporary files
+    files.forEach((file) => {
+      if (file.path && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+    });
 
-    servant = await Servant.findByIdAndUpdate(
-      servant._id,
-      {
-        $push: {
-          certificates: {
-            $each: uploadedDocs,
-          },
-        },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+    return next(
+      new ErrorResponse(
+        err.message || "An error occurred while uploading documents.",
+        500,
+      ),
     );
-
-    await User.findByIdAndUpdate(req.user._id, {
-      $inc: {
-        "statistics.totalDocumentsUploaded": uploadedDocs.length,
-      },
-    });
-
-    return res.status(200).json({
-      success: true,
-      data: servant,
-    });
   }
 
-  return next(new ErrorResponse("Unauthorized", 403));
+  servant = await Servant.findByIdAndUpdate(
+    servant._id,
+    {
+      $push: {
+        certificates: {
+          $each: uploadedDocs,
+        },
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  await User.findByIdAndUpdate(req.user._id, {
+    $inc: {
+      "statistics.totalDocumentsUploaded": uploadedDocs.length,
+    },
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: servant,
+  });
 });

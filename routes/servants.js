@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const upload = require("../utils/multer");
+const { uploadSingle, uploadArray } = require("../middlewares/upload");
 
 const {
   addPersonalInformation,
@@ -154,7 +154,7 @@ router.patch(
   "/:id/photo",
   protect,
   authorize("superadmin", "admin", "coordinator"),
-  upload.single("displayPhoto"),
+  uploadSingle("displayPhoto"),
   uploadBiometricPhoto,
 );
 
@@ -196,6 +196,15 @@ router
     protect,
     authorize("superadmin", "admin", "coordinator"),
     upload.array("certificates"),
+    uploadCerts,
+  );
+
+router
+  .route("/:id/certificates")
+  .put(
+    protect,
+    authorize("superadmin", "admin", "coordinator"),
+    uploadArray("certificates"),
     uploadCerts,
   );
 

@@ -1,29 +1,26 @@
 const multer = require("multer");
+const ErrorResponse = require("./errorResponse");
 
-const storage = multer.diskStorage({
-  //   destination: (req, file, cb) => {
-  //     cb(null, "./uploads");
-  //   },
-  //   filename: (req, file, cb) => {
-  //     cb(null, new Date().toISOString() + "-" + file.originalname);
-  //   },
-});
+const storage = multer.diskStorage({});
+
+const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png"];
 
 const fileFilter = (req, file, cb) => {
-  if (
-    file.mimetype === "image/jpeg" ||
-    file.mimetype === "image/jpg" ||
-    file.mimetype === "image/png"
-  ) {
-    cb(null, true);
-  } else {
-    cb({ message: "Unsupported file format" }, false);
+  if (!allowedMimeTypes.includes(file.mimetype)) {
+    return cb(
+      new ErrorResponse("Only JPEG, JPG and PNG image files are allowed.", 400),
+      false,
+    );
   }
+
+  cb(null, true);
 };
 
 const upload = multer({
   storage,
-  limits: { fileSize: 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
   fileFilter,
 });
 

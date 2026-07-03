@@ -57,7 +57,7 @@ exports.login = asyncHandler(async (req, res, next) => {
 exports.verifyLoginOTP = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email }).populate(
     "coordinators",
-    "_id firstName lastName email role assignedLGA",
+    "_id firstName lastName email role assignedLGA statistics",
   );
   if (!user) return next(new ErrorResponse("User not found", 404));
 

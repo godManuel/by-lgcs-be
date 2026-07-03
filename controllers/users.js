@@ -245,6 +245,7 @@ exports.addCoordinator = asyncHandler(async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         assignedLGA: user.assignedLGA,
+        statistics: user.statistics,
         message: "Coordinator account created successfully.",
       },
     });

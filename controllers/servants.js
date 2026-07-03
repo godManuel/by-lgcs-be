@@ -110,11 +110,7 @@ exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
       return next(new ErrorResponse("Unauthorized", 403));
     }
 
-    const assignedLGAKey = Object.keys(LGAs).find(
-      (key) => LGAs[key] === assignedLGA,
-    );
-
-    if (assignedLGAKey !== servant.serviceArea) {
+    if (assignedLGA !== servant.serviceArea) {
       if (req.file.path && fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
       }
@@ -782,18 +778,12 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
       return next(new ErrorResponse("Unauthorized", 403));
     }
 
-    const normalize = (value = "") => value.toLowerCase().trim();
+    if (assignedLGA !== servant.serviceArea) {
+      if (req.file.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
 
-    const allowedAreaValues = [assignedLGA, ...(assignedRDAs || [])]
-      .filter(Boolean)
-      .map(normalize);
-
-    const servantArea = normalize(servant.serviceArea);
-
-    if (!allowedAreaValues.includes(servantArea)) {
-      return next(
-        new ErrorResponse("You are not assigned to this region", 403),
-      );
+      return next(new ErrorResponse("You are not assigned to this LGA", 403));
     }
   }
 

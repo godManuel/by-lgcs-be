@@ -778,12 +778,26 @@ exports.uploadCerts = asyncHandler(async (req, res, next) => {
       return next(new ErrorResponse("Unauthorized", 403));
     }
 
-    if (assignedLGA !== servant.serviceArea) {
-      if (req.file.path && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+    const normalize = (value = "") => value.toLowerCase().trim();
+
+    const allowedAreas = [assignedLGA, ...(assignedRDAs || [])]
+      .filter(Boolean)
+      .map(normalize);
+
+    const servantArea = normalize(servant.serviceArea);
+
+    if (!allowedAreas.includes(servantArea)) {
+      if (req.files?.length) {
+        req.files.forEach((file) => {
+          if (file.path && fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        });
       }
 
-      return next(new ErrorResponse("You are not assigned to this LGA", 403));
+      return next(
+        new ErrorResponse("You are not assigned to this region", 403),
+      );
     }
   }
 

@@ -110,12 +110,22 @@ exports.uploadBiometricPhoto = asyncHandler(async (req, res, next) => {
       return next(new ErrorResponse("Unauthorized", 403));
     }
 
-    if (assignedLGA !== servant.serviceArea) {
-      if (req.file.path && fs.existsSync(req.file.path)) {
+    // Normalize values for comparison
+    const normalize = (value = "") => value.toString().trim().toLowerCase();
+
+    const allowedAreas = [assignedLGA].filter(Boolean).map(normalize);
+
+    const servantArea = normalize(servant.serviceArea);
+
+    if (!allowedAreas.includes(servantArea)) {
+      // Delete uploaded file if it exists
+      if (req.file?.path && fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
       }
 
-      return next(new ErrorResponse("You are not assigned to this LGA", 403));
+      return next(
+        new ErrorResponse("You are not assigned to this region.", 403),
+      );
     }
   }
 
@@ -614,7 +624,7 @@ exports.getCivilServant = asyncHandler(async (req, res, next) => {
 // @ROUTE       POST  /api/v1/civil-servants/:id
 // @ACCESS      Private
 exports.updateCivilServant = asyncHandler(async (req, res, next) => {
-  const { role, assignedRDAs, assignedLGA } = req.user;
+  const { role, assignedRDAs = [], assignedLGA } = req.user;
 
   // Helper function
   const getFilteredUpdateBody = (servant, body) => {
@@ -641,73 +651,60 @@ exports.updateCivilServant = asyncHandler(async (req, res, next) => {
     return updateBody;
   };
 
-  if (role === "superadmin") {
-    let servant = await Servant.findById(req.params.servantId);
+  let servant = await Servant.findById(req.params.servantId);
 
-    if (!servant) {
-      return next(new ErrorResponse("Data not found!", 404));
-    }
-
-    const updateBody = getFilteredUpdateBody(servant, req.body);
-
-    servant = await Servant.findByIdAndUpdate(
-      req.params.servantId,
-      {
-        $set: updateBody,
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-
-    return res.status(200).json({
-      success: true,
-      data: { servant },
-    });
+  if (!servant) {
+    return next(new ErrorResponse("Civil servant not found", 404));
   }
 
-  if (role === "admin" || role === "coordinator") {
-    const servant = await Servant.findById(req.params.servantId);
-
-    if (!servant) {
-      return next(new ErrorResponse("Civil servant not found", 404));
+  // Only Admin/Coordinator are restricted
+  if (role !== "superadmin") {
+    if (role !== "admin" && role !== "coordinator") {
+      return next(new ErrorResponse("Unauthorized", 403));
     }
 
-    // const allowedAreaValues = [
-    //   ...(assignedRDAs || []),
-    //   ...(assignedLGA || []),
-    // ].map((area) => area.toLowerCase().trim());
+    const normalize = (value = "") => value.toString().trim().toLowerCase();
 
-    const servantArea = servant.serviceArea;
+    const allowedAreas = [assignedLGA, ...assignedRDAs]
+      .filter(Boolean)
+      .map(normalize);
 
-    console.log(servantArea);
-    console.log(assignedLGA);
+    const servantArea = normalize(servant.serviceArea);
 
-    if (assignedLGA !== servantArea) {
+    console.log({
+      assignedLGA,
+      assignedRDAs,
+      servantServiceArea: servant.serviceArea,
+      allowedAreas,
+      servantArea,
+    });
+
+    if (!allowedAreas.includes(servantArea)) {
       return next(
         new ErrorResponse("You are not assigned to this region", 403),
       );
     }
-
-    const updateBody = getFilteredUpdateBody(servant, req.body);
-
-    const updatedServant = await Servant.findByIdAndUpdate(
-      req.params.servantId,
-      {
-        $set: updateBody,
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-
-    return res.status(200).json({
-      success: true,
-      servant: updatedServant,
-    });
   }
+
+  const updateBody = getFilteredUpdateBody(servant, req.body);
+
+  servant = await Servant.findByIdAndUpdate(
+    req.params.servantId,
+    {
+      $set: updateBody,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      servant,
+    },
+  });
 });
 
 // @DESC        Delete Civil Servant
